@@ -1,0 +1,31 @@
+bin/
+obj/
+publish/
+.verify-build/
+.verify-build*/
+*.user
+*.suo
+*.rsuser
+*.userosscache
+*.sln.docstates
+.vs/
+.vscode/
+*.log
+.run*.log
+TestResults/
+*.ncrunch*
+*.DotSettings.user
+artifacts/
+*.tmp
+*.bak
+
+# Local secrets and environment-specific config.
+appsettings.Local.json
+appsettings.Production.json
+*.pubxml.user
+
+# OS files.
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store

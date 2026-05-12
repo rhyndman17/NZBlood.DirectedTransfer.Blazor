@@ -1,0 +1,363 @@
+@page "/"
+@inject IConfiguration Configuration
+@inject IUserContextService UserContextService
+@inject IDirectedTransferService TransferService
+@inject IDirectedTransferReportService ReportService
+@inject IDirectedTransferEmailService EmailService
+
+<PageTitle>Directed Transfer</PageTitle>
+
+<SfToast ID="directed_transfer_toast" @ref="_toast" Timeout="4200" ShowCloseButton="true" ShowProgressBar="true">
+    <ToastPosition X="Right" Y="Top" />
+</SfToast>
+
+<SfDialog Width="460px" IsModal="true" ShowCloseIcon="true" @bind-Visible="_showProcessDialog">
+    <DialogTemplates>
+        <Header>Process directed transfer</Header>
+        <Content>
+            <p>Please confirm you would like to process the selected quantities.</p>
+            <dl class="dialog-summary">
+                <div><dt>POU Site</dt><dd>@_selectedSite?.LocationCode</dd></div>
+                <div><dt>Pick Site</dt><dd>@_selectedSite?.PickFromSite</dd></div>
+                <div><dt>Lines</dt><dd>@OrderLineCount</dd></div>
+            </dl>
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="Cancel" OnClick="@CloseProcessDialog" />
+        <DialogButton Content="Process" CssClass="e-success" IsPrimary="true" OnClick="@RunProcessAsync" />
+    </DialogButtons>
+</SfDialog>
+
+<section class="page-header command-header">
+    <div class="brand-block">
+        <img class="brand-logo" src="/brand_logo.png" alt="NZ Blood logo" onerror="this.hidden=true; this.nextElementSibling.hidden=false" />
+        <div class="app-mark" hidden>DT</div>
+        <div>
+            <p class="eyebrow">Directed Transfer</p>
+            <h1>Point of Use Replenishment</h1>
+        </div>
+    </div>
+    <div class="user-pill">
+        <span>@(_user?.UserId ?? "Loading")</span>
+        <strong>@DataModeLabel</strong>
+    </div>
+</section>
+
+<StatusBanner Message="@_message" Tone="@_messageTone" />
+
+<section class="command-bar transfer-command-bar">
+    <label class="search-box">
+        <span>Point of Use Site</span>
+        <select @bind="_selectedPouSiteCode" @bind:after="OnSiteChangedAsync" disabled="@_loadingSites">
+            <option value="">Select site</option>
+            @foreach (var site in _sites)
+            {
+                <option value="@site.LocationCode">@site.LocationCode</option>
+            }
+        </select>
+    </label>
+
+    <label class="search-box">
+        <span>Pick From Site</span>
+        <input value="@_selectedSite?.PickFromSite" readonly />
+    </label>
+
+    <label class="search-box reference-box">
+        <span>Order Reference</span>
+        <input @bind="_orderReference" @bind:event="oninput" />
+    </label>
+
+    <div class="button-group command-actions">
+        <button class="button secondary" @onclick="RefreshAsync" disabled="@_loadingItems">Refresh</button>
+        <button class="button secondary" @onclick="PrintAsync" disabled="@(!CanReport)">Print</button>
+        <button class="button primary" @onclick="OpenProcessDialog" disabled="@(!CanProcess)">Process</button>
+    </div>
+</section>
+
+@if (_selectedSite is not null)
+{
+    <section class="site-summary">
+        <div><span>POU Site</span><strong>@_selectedSite.LocationName</strong></div>
+        <div><span>Pick Site</span><strong>@_selectedSite.PickFromSiteName</strong></div>
+        <div><span>Email To</span><strong>@SafeText(_selectedSite.SiteTransferEmailAddress, "Not configured")</strong></div>
+        <div><span>Items</span><strong>@_items.Count.ToString("N0")</strong></div>
+    </section>
+}
+
+<section class="data-surface transfer-surface">
+    <div class="section-heading">
+        <div>
+            <h2>Directed Transfer Items</h2>
+            <span>@_items.Count item(s)</span>
+        </div>
+        <span class="warning-note">Qty Pending includes outstanding Panatracker transfers from all locations.</span>
+    </div>
+
+    @if (_loadingItems)
+    {
+        <div class="loading-panel">Loading items...</div>
+    }
+    else if (_selectedSite is null)
+    {
+        <div class="empty-state">
+            <h2>Select a Point of Use site</h2>
+            <p>The pick site and replenishment items will load automatically.</p>
+        </div>
+    }
+    else if (_items.Count == 0)
+    {
+        <div class="empty-state">
+            <h2>No directed transfer items</h2>
+            <p>No replenishment items are available for the selected site.</p>
+        </div>
+    }
+    else
+    {
+        <SfGrid DataSource="@_items" AllowSorting="true" AllowTextWrap="true" CssClass="workflow-grid transfer-grid">
+            <GridColumns>
+                <GridColumn Field="@nameof(DirectedTransferItem.Priority)" HeaderText="Priority" Width="90" TextAlign="TextAlign.Center" />
+                <GridColumn Field="@nameof(DirectedTransferItem.ItemNumber)" HeaderText="GP Item Code" Width="150" />
+                <GridColumn Field="@nameof(DirectedTransferItem.ItemDescription)" HeaderText="Item Description" MinWidth="260" />
+                <GridColumn Field="@nameof(DirectedTransferItem.UnitOfMeasure)" HeaderText="UOM" Width="110" />
+                <GridColumn Field="@nameof(DirectedTransferItem.UomLongDescription)" HeaderText="UOM Long Desc" Width="180" />
+                <GridColumn Field="@nameof(DirectedTransferItem.QtyPending)" HeaderText="QTY Pending" Width="130" TextAlign="TextAlign.Right">
+                    <Template Context="row">
+                        @{
+                            var item = (DirectedTransferItem)row;
+                        }
+                        <span class="@(item.QtyPending != 0 ? "pending-qty" : null)">@item.QtyPending.ToString("N0")</span>
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(DirectedTransferItem.QtyAvailable)" HeaderText="QTY Available at Pick Location" Width="170" TextAlign="TextAlign.Right" Format="N0" />
+                <GridColumn Field="@nameof(DirectedTransferItem.OrderUpToLevel)" HeaderText="POU Site Order Up To Level" Width="170" TextAlign="TextAlign.Right" Format="N0" />
+                <GridColumn Field="@nameof(DirectedTransferItem.QtyToOrder)" HeaderText="QTY to Order" Width="140" TextAlign="TextAlign.Right">
+                    <Template Context="row">
+                        @{
+                            var item = (DirectedTransferItem)row;
+                        }
+                        <input class="qty-input" type="number" min="0" max="@item.QtyAvailable" value="@item.QtyToOrder" @onchange="args => SetQtyToOrder(item, args.Value?.ToString())" />
+                    </Template>
+                </GridColumn>
+            </GridColumns>
+        </SfGrid>
+    }
+</section>
+
+@if (_lastReport is not null)
+{
+    <section class="download-strip">
+        <span>@_lastReport.FileName is ready.</span>
+        <a class="button secondary" href="@($"/reports/directed-transfer/{_lastReport.ReportId}")">Download PDF</a>
+    </section>
+}
+
+@code {
+    private UserContext? _user;
+    private SfToast? _toast;
+    private IReadOnlyList<DirectedTransferSite> _sites = [];
+    private List<DirectedTransferItem> _items = [];
+    private DirectedTransferSite? _selectedSite;
+    private GeneratedReportFile? _lastReport;
+    private string _selectedPouSiteCode = string.Empty;
+    private string _orderReference = string.Empty;
+    private string _message = string.Empty;
+    private string _messageTone = "info";
+    private bool _loadingSites = true;
+    private bool _loadingItems;
+    private bool _processing;
+    private bool _showProcessDialog;
+
+    private string DataModeLabel => Configuration.GetValue<bool>("DirectedTransfer:UseMockData") ? "Mock data" : "Live SQL";
+    private bool CanReport => !_loadingItems && _selectedSite is not null && _items.Count > 0;
+    private bool CanProcess => CanReport && !_processing && OrderLineCount > 0;
+    private int OrderLineCount => _items.Count(item => item.QtyToOrder > 0);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _loadingSites = true;
+            _user = await UserContextService.GetCurrentUserAsync();
+            _sites = await TransferService.GetPouSitesAsync();
+            _message = Configuration["DirectedTransfer:MainMessage"] ?? string.Empty;
+            _messageTone = "info";
+        }
+        catch (Exception ex)
+        {
+            _message = ex.Message;
+            _messageTone = "error";
+        }
+        finally
+        {
+            _loadingSites = false;
+        }
+    }
+
+    private async Task OnSiteChangedAsync()
+    {
+        _selectedSite = _sites.FirstOrDefault(site => site.LocationCode == _selectedPouSiteCode);
+        _lastReport = null;
+        _items.Clear();
+        if (_selectedSite is not null && !string.IsNullOrWhiteSpace(_selectedSite.PickFromSite))
+        {
+            await LoadItemsAsync();
+        }
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (_selectedSite is null)
+        {
+            return;
+        }
+
+        await LoadItemsAsync();
+    }
+
+    private async Task LoadItemsAsync()
+    {
+        if (_selectedSite is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _loadingItems = true;
+            _message = "Loading items...";
+            _messageTone = "info";
+            _items = (await TransferService.GetItemsAsync(_selectedSite.PickFromSite, _selectedSite.LocationCode)).ToList();
+            _message = _items.Count.ToString("N0") + " item(s)";
+            _messageTone = "success";
+        }
+        catch (Exception ex)
+        {
+            _items.Clear();
+            _message = ex.Message;
+            _messageTone = "error";
+        }
+        finally
+        {
+            _loadingItems = false;
+        }
+    }
+
+    private void SetQtyToOrder(DirectedTransferItem item, string? value)
+    {
+        if (!int.TryParse(value, out var qty))
+        {
+            qty = 0;
+        }
+
+        if (qty < 0)
+        {
+            qty = 0;
+        }
+
+        if (qty > item.QtyAvailable)
+        {
+            qty = item.QtyAvailable;
+            _message = "Qty ordered cannot be greater than the qty available.";
+            _messageTone = "error";
+        }
+
+        item.QtyToOrder = qty;
+    }
+
+    private async Task PrintAsync()
+    {
+        await GenerateReportAndEmailAsync(1, null);
+    }
+
+    private void OpenProcessDialog()
+    {
+        if (!CanProcess)
+        {
+            _message = "No quantities have been ordered.";
+            _messageTone = "info";
+            return;
+        }
+
+        _showProcessDialog = true;
+    }
+
+    private void CloseProcessDialog()
+    {
+        _showProcessDialog = false;
+    }
+
+    private async Task RunProcessAsync()
+    {
+        _showProcessDialog = false;
+
+        if (_user is null || _selectedSite is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _processing = true;
+            var transferOrderCode = await TransferService.CreateTransferAsync(_user, _selectedSite, _orderReference, _items);
+            await GenerateReportAndEmailAsync(2, transferOrderCode);
+            var reportMessage = _message;
+            await ShowToastAsync("Complete", "Directed transfer processed.", true);
+            await LoadItemsAsync();
+            _message = "The order has been sent for processing. " + reportMessage;
+            _messageTone = "success";
+        }
+        catch (Exception ex)
+        {
+            _message = ex.Message;
+            _messageTone = "error";
+            await ShowToastAsync("Error", ex.Message, false);
+        }
+        finally
+        {
+            _processing = false;
+        }
+    }
+
+    private async Task GenerateReportAndEmailAsync(int reportOption, string? transferOrderCode)
+    {
+        if (_user is null || _selectedSite is null)
+        {
+            return;
+        }
+
+        var request = new DirectedTransferReportRequest
+        {
+            User = _user,
+            Site = _selectedSite,
+            Items = _items,
+            OrderReference = _orderReference,
+            ReportOption = reportOption,
+            TransferOrderCode = transferOrderCode
+        };
+
+        _lastReport = await ReportService.GenerateAsync(request);
+        var emailMessage = await EmailService.SendReportAsync(request, _lastReport);
+        _message = emailMessage;
+        _messageTone = emailMessage.StartsWith("PDF emailed", StringComparison.OrdinalIgnoreCase) ? "success" : "info";
+        await ShowToastAsync("PDF ready", emailMessage, _messageTone == "success");
+    }
+
+    private async Task ShowToastAsync(string title, string content, bool success)
+    {
+        if (_toast is null)
+        {
+            return;
+        }
+
+        await _toast.ShowAsync(new ToastModel
+        {
+            Title = title,
+            Content = content,
+            CssClass = success ? "e-toast-success" : "e-toast-danger"
+        });
+    }
+
+    private static string SafeText(string value, string fallback)
+        => string.IsNullOrWhiteSpace(value) ? fallback : value;
+}
