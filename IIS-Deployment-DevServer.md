@@ -23,6 +23,12 @@ Recommended app pool:
 
 ## 2. SQL Permissions
 
+SQL object scripts are included with the project under:
+
+```text
+Sql Objects
+```
+
 The configured SQL login needs read access to:
 
 - `nzbDirectedTransferItems`

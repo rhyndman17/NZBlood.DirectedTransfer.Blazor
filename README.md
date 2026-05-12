@@ -91,6 +91,9 @@ http://localhost:5222
 - `Services/UserContextService.cs`  
   Resolves the current user and email address.
 
+- `Sql Objects`  
+  Local copy of the directed transfer SQL object scripts from the Wisej project.
+
 - `wwwroot/app.css`  
   App styling aligned to the Approval Workflows Blazor project.
 
@@ -117,7 +120,13 @@ The live service expects these existing SQL objects in the configured database:
 - `nzbDirectedTransferEmailLne`
 - `nzbCreateDirectedTransfer`
 
-The source Wisej project has SQL scripts under:
+SQL scripts are included in this project under:
+
+```text
+Sql Objects
+```
+
+The source Wisej project also has the original scripts under:
 
 ```text
 ..\NZBlood.DirectedTransferWI\ExtObjects

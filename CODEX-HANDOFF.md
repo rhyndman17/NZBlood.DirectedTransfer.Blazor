@@ -89,7 +89,13 @@ Development mode runs with mock data unless overridden.
 
 ## Live SQL Objects
 
-Review these source scripts in the Wisej folder before changing live SQL:
+Review these local SQL scripts before changing live SQL:
+
+```text
+Sql Objects
+```
+
+They were copied from the Wisej folder:
 
 ```text
 ..\NZBlood.DirectedTransferWI\ExtObjects
