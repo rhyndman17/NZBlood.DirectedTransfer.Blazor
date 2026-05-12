@@ -119,11 +119,6 @@ try {
                 if ($LASTEXITCODE -ne 0) {
                     throw "dotnet build failed with exit code $LASTEXITCODE."
                 }
-
-                git clean -fdX
-                if ($LASTEXITCODE -ne 0) {
-                    throw "git clean -fdX failed with exit code $LASTEXITCODE."
-                }
             }
             finally {
                 Pop-Location
