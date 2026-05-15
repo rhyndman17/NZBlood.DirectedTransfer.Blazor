@@ -14,7 +14,7 @@ C:\Users\RobertHyndman\OneDrive - Altara Limited\Dev\General\NZBlood.ApprovalWor
 
 ## Current State
 
-The first Blazor migration pass is functional in mock mode and builds cleanly.
+The Blazor migration is functional in mock mode and has been tested on the dev IIS server against live SQL. The main directed transfer workflow is operational, including POU selection, item loading, quantity entry, Print PDF, and Process test flow with email disabled by configuration.
 
 Verified command:
 
@@ -50,17 +50,22 @@ http://localhost:5222
 - Point of Use site selector.
 - Pick From site display, resolved from `nzbSiteOptions`.
 - Order reference entry.
-- Refresh, Print, and Process actions.
-- Directed transfer item grid using Syncfusion.
+- Refresh, Print, and Process actions. Refresh re-resolves the selected POU site and rebuilds the item list.
+- Directed transfer item list with paging, filtering, ordered-only view, and inline quantity entry.
 - Inline editing for `QTY to Order` only.
 - UOM is read-only in the Blazor migration.
-- Validation prevents negative quantities and caps quantity at available quantity.
+- Validation prevents negative quantities and displays line-level warnings when quantity ordered is greater than available quantity. The entered value remains visible for user correction.
+- Print and Process are enabled only when at least one line has a quantity to order.
 - Process confirmation dialog.
 - SQL-backed service for live mode.
 - Mock service for local UI review.
 - Report generation from HTML to PDF.
-- Generated PDF browser download endpoint.
-- Email service using the selected site's `SiteTransferEmailAddress`.
+- Print generates and downloads the PDF directly.
+- Process creates the transfer, generates and downloads the processed PDF, and optionally emails it depending on `Smtp:SendEmail`.
+- Email service uses the selected site's `SiteTransferEmailAddress` when enabled.
+- Configurable IIS path base and default page size.
+- Permanent `DirectedTransfer:MainMessage` notice displayed in the selection panel.
+- NZ Blood favicon and header branding.
 
 ## Important Files
 
@@ -142,9 +147,16 @@ Base config:
   "AppName": "Directed Transfer",
   "MainMessage": "IMPORTANT: For next day delivery please order by 12pm",
   "UseMockData": false,
-  "RequireHttpsRedirection": false
+  "RequireHttpsRedirection": false,
+  "PathBase": "/NZBlood.DirectedTransfer.Blazor",
+  "DefaultPageSize": 50,
+  "DataProtectionKeysPath": "C:\\ProgramData\\NZBlood\\DirectedTransfer\\DataProtection-Keys"
 }
 ```
+
+`PathBase` must match the IIS application alias. For production, use a cleaner alias such as `/DirectedTransfer` and update `PathBase` accordingly. Leave it blank if the app is hosted at a dedicated site root.
+
+`DefaultPageSize` controls the initial item-table page size. The UI caps selectable page size at 250.
 
 Connection string:
 
@@ -158,20 +170,26 @@ SMTP:
 
 ```json
 "Smtp": {
-  "Host": "",
+  "SendEmail": 0,
+  "Host": "smtp.nzblood.co.nz",
   "Port": 25,
   "From": "directedtransfer@nzblood.co.nz",
-  "EnableSsl": false
+  "EnableSsl": false,
+  "UserName": "",
+  "Password": ""
 }
 ```
 
-Use user secrets or environment configuration for real credentials and the Syncfusion license key. Avoid committing live credentials.
+`Smtp:SendEmail=0` disables SMTP. This is recommended for dev process testing. `Smtp:SendEmail=1` enables SMTP on Process. Print never sends email.
+
+Use user secrets, IIS environment variables, or server-local configuration for real credentials and the Syncfusion license key. Avoid committing live credentials.
 
 Examples:
 
 ```powershell
 dotnet user-secrets set "ConnectionStrings:DirectedTransfer" "<connection string>"
 dotnet user-secrets set "Syncfusion:LicenseKey" "<license key>"
+dotnet user-secrets set "Smtp:SendEmail" "0"
 dotnet user-secrets set "Smtp:Host" "<smtp host>"
 ```
 
@@ -205,6 +223,8 @@ Publish:
 .\Scripts\Publish Web Application.ps1
 ```
 
+The publish script clears `.\publish` before publishing to avoid nested publish output. If a dev IIS deployment has had several partial file copies and starts showing runtime/dependency errors, perform a full clean deploy from `.\publish`.
+
 Update GitHub:
 
 ```powershell
@@ -227,9 +247,8 @@ Override if needed:
 
 - Compare the generated PDF against the sample Crystal PDFs in `..\NZBlood.DirectedTransferWI\SamplePDF`.
 - Tune report spacing, columns, and page breaks to better match the Crystal report.
-- Test live SQL reads against the dev database.
 - Test Process against a controlled POU site and confirm Panatracker rows are created correctly.
 - Confirm whether the SQL-side `nzbCreateDirectedTransfer` procedure should raise errors on failure instead of returning a result set from its catch block.
-- Confirm SMTP settings and whether relay allows the IIS app server.
+- Confirm SMTP settings and whether relay allows the IIS app server before enabling `Smtp:SendEmail=1`.
 - Add IIS Windows Authentication if required for production identity.
 - Consider adding a small SQL wrapper procedure for transfer creation if transaction boundaries need to include header/line inserts plus `nzbCreateDirectedTransfer`.

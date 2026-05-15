@@ -4,7 +4,7 @@ Use this file when opening this folder in a new Codex session.
 
 ## Current Goal
 
-Continue migrating the Wisej directed transfer app to Blazor. The Blazor project is newly scaffolded and lives in this folder:
+Continue hardening and polishing the Blazor directed transfer app. The project lives in this folder:
 
 ```text
 C:\Users\RobertHyndman\OneDrive - Altara Limited\Dev\General\NZBlood.DirectedTransfer.Blazor
@@ -33,9 +33,13 @@ C:\Users\RobertHyndman\OneDrive - Altara Limited\Dev\General\NZBlood.ApprovalWor
 - Wrapper SQL procedures are acceptable if needed.
 - Print report should include all rows.
 - Process report should include only rows where `QtyToOrder != 0`.
-- Report should be emailed and also available for browser download.
+- Print should generate and download the PDF directly.
+- Process should generate and download the processed PDF directly.
+- Print and Process should be disabled until at least one line has a quantity to order.
+- SMTP should only happen on Process, and only when `Smtp:SendEmail=1`.
 - Email recipients are the selected site's `SiteTransferEmailAddress`.
 - PDF generation can use Syncfusion.
+- Dev server processing is tested with `Smtp:SendEmail=0`.
 
 ## Current Implementation Summary
 
@@ -43,10 +47,19 @@ C:\Users\RobertHyndman\OneDrive - Altara Limited\Dev\General\NZBlood.ApprovalWor
 - `DirectedTransferService` implements live SQL mode.
 - `MockDirectedTransferService` supports local mock mode.
 - `DirectedTransferReportService` builds an HTML report and converts it to PDF with Syncfusion.
-- `DirectedTransferEmailService` sends the PDF through SMTP.
+- `DirectedTransferEmailService` sends the PDF through SMTP only when `Smtp:SendEmail` is enabled.
 - `Program.cs` switches mock/live service based on `DirectedTransfer:UseMockData`.
 - `appsettings.Development.json` sets mock mode to true.
 - `appsettings.json` is intended for live/dev-server deployment.
+- Current visible build marker is in `BuildInfo.cs`.
+- Item list supports filtering, ordered-only view, paging, configurable default page size, row-level validation banners, and direct quantity entry.
+- Quantity values are preserved across paging/filtering.
+- The POU dropdown receives initial focus.
+- Refresh re-resolves the selected POU site and reloads the item list. There is no separate Load button.
+- `DirectedTransfer:MainMessage` is a permanent notice inside the selection panel, separate from transient status banners.
+- Print and Process auto-download generated PDFs through `/reports/directed-transfer/{reportId}`.
+- Process confirmation uses site names and email address.
+- `wwwroot/favicon.png` is NZ Blood branded.
 
 ## Build Verification
 
@@ -71,6 +84,8 @@ The project has helper scripts matching the Approval Workflows app:
 .\Scripts\Update-GitHub.ps1 -Message "_2026.5.12"
 ```
 
+`Publish Web Application.ps1` clears `.\publish` before publishing so old publish output does not get copied into itself. It currently enables stdout logging in generated `web.config`; turn this off once IIS diagnostics are no longer needed.
+
 `Update-GitHub.ps1` defaults to:
 
 ```text
@@ -86,6 +101,29 @@ dotnet run --urls http://localhost:5222
 ```
 
 Development mode runs with mock data unless overridden.
+
+## Key Configuration
+
+Important `appsettings.json` keys:
+
+```json
+"DirectedTransfer": {
+  "UseMockData": false,
+  "RequireHttpsRedirection": false,
+  "PathBase": "/NZBlood.DirectedTransfer.Blazor",
+  "DefaultPageSize": 50,
+  "DataProtectionKeysPath": "C:\\ProgramData\\NZBlood\\DirectedTransfer\\DataProtection-Keys"
+},
+"Smtp": {
+  "SendEmail": 0
+}
+```
+
+`PathBase` must match the IIS application alias exactly. For production, prefer a clean alias such as `/DirectedTransfer` and update `PathBase`.
+
+`Smtp:SendEmail=0` disables SMTP for dev process testing. Use `1`, `true`, or `yes` to enable.
+
+The Syncfusion key is read from `Syncfusion:LicenseKey` and registered in `Program.cs`. Prefer server-local configuration or environment variables for secrets in production.
 
 ## Live SQL Objects
 
@@ -125,6 +163,8 @@ It commits those inserts, then calls `nzbCreateDirectedTransfer`. This matches t
 
 Also review `nzbCreateDirectedTransfer` error handling. The supplied procedure catches errors and selects error details, but may not throw an exception back to the app. That could make app-side success detection too optimistic.
 
+The app currently uses SQL username/password authentication for initial testing. Revisit integrated security or a least-privileged SQL login before production.
+
 ## Report Notes
 
 Sample PDFs exist in:
@@ -133,7 +173,7 @@ Sample PDFs exist in:
 ..\NZBlood.DirectedTransferWI\SamplePDF
 ```
 
-Current generated report is a clean HTML approximation, not yet visually matched to Crystal. Next iteration should compare:
+Current generated report is a clean HTML approximation, not yet visually matched to Crystal. Print report includes all rows; Process report includes only non-zero ordered rows. Next iteration should compare:
 
 - header content
 - transfer code/reference placement
@@ -146,12 +186,11 @@ Current generated report is a clean HTML approximation, not yet visually matched
 
 ## Next Useful Tasks
 
-1. Run live SQL read-only mode on the dev server or from a machine with DB access.
-2. Validate site list and item columns match expected Wisej output.
-3. Test Print with a selected POU site.
-4. Configure SMTP and confirm email delivery to `SiteTransferEmailAddress`.
-5. Test Process in a controlled scenario.
-6. Verify Panatracker header/detail rows are created.
-7. Verify `nzbDirectedTransferEmailLne` rows are correct.
-8. Compare generated PDF with the sample PDFs and tune the HTML.
-9. Publish to IIS dev server following `IIS-Deployment-DevServer.md`.
+1. Test Process in a controlled scenario on the dev server with `Smtp:SendEmail=0`.
+2. Verify Panatracker header/detail rows are created.
+3. Verify `nzbDirectedTransferEmailLne` rows are correct.
+4. Compare generated PDF with the sample PDFs and tune the HTML.
+5. Turn off stdout logging in the generated `web.config` once deployment is stable.
+6. Decide production IIS alias and update `DirectedTransfer:PathBase`.
+7. Confirm production Syncfusion key/SQL credential handling outside source control.
+8. Configure SMTP and confirm email delivery to `SiteTransferEmailAddress` before enabling `Smtp:SendEmail=1`.

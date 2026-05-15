@@ -15,6 +15,11 @@ public sealed class DirectedTransferEmailService : IDirectedTransferEmailService
 
     public async Task<string> SendReportAsync(DirectedTransferReportRequest request, GeneratedReportFile report, CancellationToken cancellationToken = default)
     {
+        if (!IsEmailEnabled())
+        {
+            return "Email sending is disabled, so the PDF was generated but not emailed.";
+        }
+
         var recipients = SplitRecipients(request.Site.SiteTransferEmailAddress);
         if (recipients.Count == 0)
         {
@@ -62,4 +67,12 @@ public sealed class DirectedTransferEmailService : IDirectedTransferEmailService
         => value.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
+
+    private bool IsEmailEnabled()
+    {
+        var value = _configuration["Smtp:SendEmail"];
+        return string.Equals(value, "1", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "true", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "yes", StringComparison.OrdinalIgnoreCase);
+    }
 }

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Caching.Memory;
 using NZBlood.DirectedTransfer.Blazor.Components;
 using NZBlood.DirectedTransfer.Blazor.Services;
@@ -8,6 +9,15 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+var dataProtectionKeysPath = builder.Configuration["DirectedTransfer:DataProtectionKeysPath"];
+if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
+{
+    Directory.CreateDirectory(dataProtectionKeysPath);
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath))
+        .SetApplicationName("NZBlood.DirectedTransfer.Blazor");
+}
+
 builder.Services.AddSyncfusionBlazor();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddMemoryCache();
@@ -24,7 +34,14 @@ var app = builder.Build();
 var syncfusionLicenseKey = builder.Configuration["Syncfusion:LicenseKey"];
 if (!string.IsNullOrWhiteSpace(syncfusionLicenseKey))
 {
-    SyncfusionLicenseProvider.RegisterLicense(syncfusionLicenseKey);
+    try
+    {
+        SyncfusionLicenseProvider.RegisterLicense(syncfusionLicenseKey);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex, "Syncfusion license registration failed.");
+    }
 }
 
 if (!app.Environment.IsDevelopment())

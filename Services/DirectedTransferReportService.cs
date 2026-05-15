@@ -88,6 +88,7 @@ public sealed class DirectedTransferReportService : IDirectedTransferReportServi
             th { background: #faf9f8; border-bottom: 1px solid #c8c6c4; color: #323130; font-size: 11px; padding: 8px; text-align: left; text-transform: uppercase; }
             td { border-bottom: 1px solid #edebe9; padding: 7px 8px; vertical-align: top; }
             .num { text-align: right; white-space: nowrap; }
+            .center { text-align: center; white-space: nowrap; }
             .pending { color: #a4262c; font-weight: 700; }
             .footer { color: #605e5c; font-size: 10px; margin-top: 16px; }
             </style>
@@ -117,7 +118,7 @@ public sealed class DirectedTransferReportService : IDirectedTransferReportServi
         foreach (var item in rows)
         {
             html.AppendLine("<tr>");
-            html.AppendLine("<td class=\"num\">" + item.Priority.ToString("N0") + "</td>");
+            html.AppendLine("<td class=\"center\">" + item.Priority.ToString("N0") + "</td>");
             html.AppendLine("<td>" + Html(item.ItemNumber) + "</td>");
             html.AppendLine("<td>" + Html(item.VendorItemNumber) + "</td>");
             html.AppendLine("<td>" + Html(item.ItemDescription) + "</td>");

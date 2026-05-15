@@ -15,4 +15,5 @@ public sealed class DirectedTransferItem
     public int OrderUpToLevel { get; init; }
     public int QtyToOrder { get; set; }
     public string VendorItemNumber { get; set; } = string.Empty;
+    public string ValidationMessage { get; set; } = string.Empty;
 }

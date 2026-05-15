@@ -1,20 +1,48 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 
+@inject IConfiguration Configuration
+
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <base href="/" />
+    <base href="@BaseHref" />
     <link rel="stylesheet" href="_content/Syncfusion.Blazor.Themes/bootstrap5.css" />
     <link rel="stylesheet" href="app.css" />
     <link rel="stylesheet" href="NZBlood.DirectedTransfer.Blazor.styles.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
-    <HeadOutlet />
+    <HeadOutlet @rendermode="InteractiveServer" />
 </head>
 
 <body>
-    <Routes />
+    <Routes @rendermode="InteractiveServer" />
     <script src="_framework/blazor.web.js"></script>
+    <script>
+        window.directedTransfer = {
+            selectFocusedInput: () => {
+                const input = document.activeElement;
+                if (input && typeof input.select === 'function') {
+                    input.select();
+                }
+            }
+        };
+    </script>
 </body>
 
 </html>
+
+@code {
+    private string BaseHref
+    {
+        get
+        {
+            var pathBase = Configuration["DirectedTransfer:PathBase"];
+            if (string.IsNullOrWhiteSpace(pathBase))
+            {
+                return "./";
+            }
+
+            return pathBase.TrimEnd('/') + "/";
+        }
+    }
+}

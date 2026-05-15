@@ -29,6 +29,10 @@ public sealed class MockDirectedTransferService : IDirectedTransferService
         return Task.FromResult(sites);
     }
 
+    public async Task<DirectedTransferSite?> GetPouSiteAsync(string pouSiteId, CancellationToken cancellationToken = default)
+        => (await GetPouSitesAsync(cancellationToken))
+            .FirstOrDefault(site => string.Equals(site.LocationCode, pouSiteId, StringComparison.OrdinalIgnoreCase));
+
     public Task<IReadOnlyList<DirectedTransferItem>> GetItemsAsync(string pickFromSiteId, string pouSiteId, CancellationToken cancellationToken = default)
     {
         IReadOnlyList<DirectedTransferItem> items =

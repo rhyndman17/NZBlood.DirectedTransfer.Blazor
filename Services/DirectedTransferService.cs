@@ -52,6 +52,42 @@ public sealed class DirectedTransferService : IDirectedTransferService
         return sites;
     }
 
+    public async Task<DirectedTransferSite?> GetPouSiteAsync(string pouSiteId, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            select top 1
+                   rtrim(@pouSiteId) LocationCode,
+                   rtrim(isnull(pou.LOCNDSCR, '')) LocationName,
+                   rtrim(isnull(s.eKanBanPickFromSite, '')) PickFromSite,
+                   rtrim(isnull(pick.LOCNDSCR, '')) PickFromSiteName,
+                   rtrim(isnull(s.SiteTransferEmailAddress, '')) SiteTransferEmailAddress
+            from nzbSiteOptions s
+            left join IV40700 pou on rtrim(pou.LOCNCODE)=rtrim(s.LocationCode)
+            left join IV40700 pick on rtrim(pick.LOCNCODE)=rtrim(s.eKanBanPickFromSite)
+            where rtrim(s.LocationCode)=rtrim(@pouSiteId)
+            """;
+
+        using var connection = new SqlConnection(_connectionString);
+        using var command = new SqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@pouSiteId", pouSiteId);
+        await connection.OpenAsync(cancellationToken);
+        using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            return null;
+        }
+
+        return new DirectedTransferSite
+        {
+            LocationCode = reader.GetTrimmedString("LocationCode"),
+            LocationName = reader.GetTrimmedString("LocationName"),
+            PickFromSite = reader.GetTrimmedString("PickFromSite"),
+            PickFromSiteName = reader.GetTrimmedString("PickFromSiteName"),
+            SiteTransferEmailAddress = reader.GetTrimmedString("SiteTransferEmailAddress")
+        };
+    }
+
     public async Task<IReadOnlyList<DirectedTransferItem>> GetItemsAsync(string pickFromSiteId, string pouSiteId, CancellationToken cancellationToken = default)
     {
         var items = new List<DirectedTransferItem>();
