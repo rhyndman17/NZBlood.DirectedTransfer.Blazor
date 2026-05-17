@@ -21,6 +21,13 @@ Recommended app pool:
 - Enable 32-bit applications: `False`
 - Identity: confirm with infrastructure/DB permissions
 
+Recommended IIS authentication for this app:
+
+- Anonymous Authentication: `Enabled`
+- Windows Authentication: `Disabled`
+
+Users do not need to log in. With Anonymous Authentication, IIS will not prompt for credentials and the app will use `DirectedTransfer:DefaultUserId` for reports and transfer records.
+
 ## 2. SQL Permissions
 
 SQL object scripts are included with the project under:
@@ -85,6 +92,7 @@ For the dev server, set:
 ```json
 "DirectedTransfer": {
   "UseMockData": false,
+  "DefaultUserId": "DirectedTransfer",
   "RequireHttpsRedirection": false,
   "DomainName": "NZBLOOD",
   "PathBase": "/NZBlood.DirectedTransfer.Blazor",
@@ -93,7 +101,7 @@ For the dev server, set:
 }
 ```
 
-`PathBase` must exactly match the IIS application alias, including spelling and casing. For production, a cleaner alias such as `/DirectedTransfer` can be used; update `PathBase` to match. If the app is hosted at a dedicated site root, leave `PathBase` blank.
+`PathBase` must exactly match the IIS application alias, including spelling and casing. Blazor Server validates the browser URL against the rendered base URL case-sensitively, even though IIS usually treats paths case-insensitively. The app redirects casing-only mismatches back to the configured `PathBase`, but the published URL should still use the canonical casing. For production, a cleaner alias such as `/DirectedTransfer` can be used; update `PathBase` to match. If the app is hosted at a dedicated site root, leave `PathBase` blank.
 
 `DefaultPageSize` controls the initial rows shown in the item list. Users can change page size in the UI up to 250.
 
@@ -151,6 +159,18 @@ Recommended process:
 3. Ensure the app pool identity has read/execute permissions on the folder.
 4. Start the app pool.
 5. Browse to the configured IIS URL.
+
+If the browser prompts for credentials before the app opens, IIS is challenging the browser with Windows Authentication. For this app, turn that challenge off.
+
+Confirm these settings:
+
+- Open IIS Manager.
+- Select the Directed Transfer application, not just the parent website.
+- Open `Authentication`.
+- Set Anonymous Authentication to `Enabled`.
+- Set Windows Authentication to `Disabled`.
+- Restart the app pool or recycle the site.
+- Browse using the production URL.
 
 If deploying under an existing website as an application, confirm the base path works with the Blazor app. The current app uses:
 
@@ -238,7 +258,10 @@ Blazor stays on `Connecting`:
 
 - Confirm `DirectedTransfer:PathBase` exactly matches the IIS application alias.
 - Check browser Network tab for `_blazor/negotiate`.
-- Path/casing mismatches can start the SignalR connection but fail circuit initialization.
+- If the page loads but controls do not respond, treat it as a Blazor Server circuit connection failure.
+- From the client workstation, browse directly to `<app-url>/_blazor/negotiate?negotiateVersion=1`; a 404, login prompt, or wrong host indicates the SignalR endpoint is not reachable at the same base URL as the page.
+- Confirm IIS has the WebSocket Protocol feature installed. SignalR can fall back to other transports, but WebSockets are the expected production path for Blazor Server.
+- Path/casing mismatches can render the first page but prevent the interactive circuit from starting. If logs show `The URI ... is not contained by the base URI ...`, browse to the exact `PathBase` casing from `appsettings.json`.
 
 SQL connection errors:
 
@@ -261,6 +284,12 @@ Email errors:
 - Confirm relay permissions for the IIS server.
 - Confirm port and SSL requirements.
 - Confirm `SiteTransferEmailAddress` is populated for the selected POU site.
+
+Browser login prompt before app opens:
+
+- This is an IIS authentication challenge, not a Blazor login screen.
+- For this app, enable Anonymous Authentication and disable Windows Authentication.
+- If the prompt shows `http://localhost`, test using the real production URL from a client workstation. `localhost` means the browser is talking to the local machine from its own point of view.
 
 ## 8. Go/No-Go Checklist
 

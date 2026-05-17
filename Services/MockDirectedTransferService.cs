@@ -84,7 +84,10 @@ public sealed class MockDirectedTransferService : IDirectedTransferService
             }
         ];
 
-        return Task.FromResult(items);
+        return Task.FromResult<IReadOnlyList<DirectedTransferItem>>(items
+            .OrderBy(item => item.Priority <= 0 ? int.MaxValue : item.Priority)
+            .ThenBy(item => item.ItemNumber, StringComparer.OrdinalIgnoreCase)
+            .ToList());
     }
 
     public Task<string> CreateTransferAsync(UserContext user, DirectedTransferSite site, string orderReference, IReadOnlyList<DirectedTransferItem> items, CancellationToken cancellationToken = default)

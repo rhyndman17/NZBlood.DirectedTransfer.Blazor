@@ -127,7 +127,10 @@ public sealed class DirectedTransferService : IDirectedTransferService
             item.VendorItemNumber = await GetPrimaryVendorItemNumberAsync(item.ItemNumber, cancellationToken);
         }
 
-        return items;
+        return items
+            .OrderBy(item => GetPrioritySortValue(item.Priority))
+            .ThenBy(item => item.ItemNumber, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     public async Task<string> CreateTransferAsync(UserContext user, DirectedTransferSite site, string orderReference, IReadOnlyList<DirectedTransferItem> items, CancellationToken cancellationToken = default)
@@ -218,6 +221,9 @@ public sealed class DirectedTransferService : IDirectedTransferService
         var result = await command.ExecuteScalarAsync(cancellationToken);
         return result is null or DBNull ? string.Empty : Convert.ToString(result) ?? string.Empty;
     }
+
+    private static int GetPrioritySortValue(int priority)
+        => priority <= 0 ? int.MaxValue : priority;
 
     private async Task ExecuteCreateTransferProcedureAsync(string id, CancellationToken cancellationToken)
     {

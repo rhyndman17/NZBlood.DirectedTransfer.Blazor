@@ -23,13 +23,15 @@ public sealed class UserContextService : IUserContextService
     {
         var domainName = _configuration["DirectedTransfer:DomainName"] ?? string.Empty;
         var identityName = _httpContextAccessor.HttpContext?.User?.Identity?.Name;
-        var userId = string.IsNullOrWhiteSpace(identityName) ? Environment.UserName : identityName;
+        var userId = string.IsNullOrWhiteSpace(identityName)
+            ? _configuration["DirectedTransfer:DefaultUserId"] ?? "DirectedTransfer"
+            : identityName;
         userId = userId.Replace(domainName + @"\", string.Empty, StringComparison.OrdinalIgnoreCase);
 
         return Task.FromResult(new UserContext
         {
             UserId = userId,
-            EmailAddress = GetUserEmail(userId)
+            EmailAddress = string.IsNullOrWhiteSpace(identityName) ? string.Empty : GetUserEmail(userId)
         });
     }
 

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Components.Server;
 using Microsoft.Extensions.Caching.Memory;
 using NZBlood.DirectedTransfer.Blazor.Components;
 using NZBlood.DirectedTransfer.Blazor.Services;
@@ -9,6 +10,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.Configure<CircuitOptions>(options =>
+{
+    options.DetailedErrors = builder.Configuration.GetValue<bool>("DirectedTransfer:DetailedCircuitErrors");
+});
 var dataProtectionKeysPath = builder.Configuration["DirectedTransfer:DataProtectionKeysPath"];
 if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
 {
@@ -56,6 +61,32 @@ if (!app.Environment.IsDevelopment())
 if (builder.Configuration.GetValue<bool>("DirectedTransfer:RequireHttpsRedirection"))
 {
     app.UseHttpsRedirection();
+}
+
+var pathBase = builder.Configuration["DirectedTransfer:PathBase"]?.TrimEnd('/');
+if (!string.IsNullOrWhiteSpace(pathBase))
+{
+    app.Use(async (context, next) =>
+    {
+        var requestPath = context.Request.Path.Value ?? string.Empty;
+        var isPathBaseRequest = requestPath.Equals(pathBase, StringComparison.OrdinalIgnoreCase)
+            || requestPath.StartsWith(pathBase + "/", StringComparison.OrdinalIgnoreCase);
+
+        if (isPathBaseRequest
+            && (!requestPath.StartsWith(pathBase, StringComparison.Ordinal)
+                || requestPath.Length == pathBase.Length))
+        {
+            var remainingPath = requestPath.Length > pathBase.Length
+                ? requestPath[pathBase.Length..]
+                : "/";
+            context.Response.Redirect(pathBase + remainingPath + context.Request.QueryString);
+            return;
+        }
+
+        await next();
+    });
+
+    app.UsePathBase(pathBase);
 }
 
 app.UseStaticFiles();
