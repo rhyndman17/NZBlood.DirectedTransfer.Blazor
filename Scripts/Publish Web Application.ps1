@@ -1,4 +1,4 @@
-Set-Location "C:\Users\RobertHyndman\OneDrive - Altara Limited\Dev\General\NZBlood.DirectedTransfer.Blazor\"
+Set-Location "C:\Users\RobertHyndman\OneDrive - Altara Limited\Customers\NZ Blood\Projects\Directed Transfer Blazor\"
 $publishPath = Join-Path (Get-Location) "publish"
 if (Test-Path -LiteralPath $publishPath) {
     Remove-Item -LiteralPath $publishPath -Recurse -Force

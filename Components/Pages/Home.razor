@@ -213,8 +213,8 @@
     private bool _showProcessDialog;
     private bool _showOrderedOnly;
 
-    private bool CanReport => !_loadingItems && !_reporting && _selectedSite is not null && _items.Count > 0 && OrderLineCount > 0;
-    private bool CanProcess => CanReport && !_processing;
+    private bool CanReport => !_loadingItems && !_reporting && _selectedSite is not null && _items.Count > 0;
+    private bool CanProcess => CanReport && !_processing && OrderLineCount > 0;
     private int OrderLineCount => _items.Count(item => item.QtyToOrder > 0);
     private string MainMessage => Configuration["DirectedTransfer:MainMessage"] ?? string.Empty;
     private IReadOnlyList<DirectedTransferItem> FilteredItems => GetFilteredItems();
@@ -476,13 +476,6 @@
     {
         if (_user is null || _selectedSite is null)
         {
-            return;
-        }
-
-        if (OrderLineCount == 0)
-        {
-            _message = "Enter a quantity to order before printing.";
-            _messageTone = "error";
             return;
         }
 

@@ -7,7 +7,7 @@ Use this file when opening this folder in a new Codex session.
 Continue hardening and polishing the Blazor directed transfer app. The project lives in this folder:
 
 ```text
-C:\Users\RobertHyndman\OneDrive - Altara Limited\Dev\General\NZBlood.DirectedTransfer.Blazor
+C:\Users\RobertHyndman\OneDrive - Altara Limited\Customers\NZ Blood\Projects\Directed Transfer Blazor
 ```
 
 The source Wisej project remains here:
@@ -32,10 +32,13 @@ C:\Users\RobertHyndman\OneDrive - Altara Limited\Dev\General\NZBlood.ApprovalWor
 - UOM must no longer be editable.
 - Wrapper SQL procedures are acceptable if needed.
 - Print report should include all rows.
+- Print report should be available even when no quantities have been entered.
+- Print report should be portrait, exclude `Qty Pending` and `Qty Available`, and render `Qty To Order` as a bottom-aligned write-in underline.
 - Process report should include only rows where `QtyToOrder != 0`.
+- Process report should show the actual entered `QtyToOrder` values.
 - Print should generate and download the PDF directly.
 - Process should generate and download the processed PDF directly.
-- Print and Process should be disabled until at least one line has a quantity to order.
+- Process should be disabled until at least one line has a quantity to order.
 - SMTP should only happen on Process, and only when `Smtp:SendEmail=1`.
 - Email recipients are the selected site's `SiteTransferEmailAddress`.
 - PDF generation can use Syncfusion.
@@ -58,6 +61,7 @@ C:\Users\RobertHyndman\OneDrive - Altara Limited\Dev\General\NZBlood.ApprovalWor
 - Refresh re-resolves the selected POU site and reloads the item list. There is no separate Load button.
 - `DirectedTransfer:MainMessage` is a permanent notice inside the selection panel, separate from transient status banners.
 - Print and Process auto-download generated PDFs through `/reports/directed-transfer/{reportId}`.
+- Print is enabled when item rows are loaded; Process is still quantity-gated.
 - Process confirmation uses site names and email address.
 - `wwwroot/favicon.png` is NZ Blood branded.
 
@@ -173,12 +177,11 @@ Sample PDFs exist in:
 ..\NZBlood.DirectedTransferWI\SamplePDF
 ```
 
-Current generated report is a clean HTML approximation, not yet visually matched to Crystal. Print report includes all rows; Process report includes only non-zero ordered rows. Next iteration should compare:
+Current generated report is a clean HTML approximation, not a pixel-perfect Crystal clone. Print report is an A4 portrait pick list that includes all rows, omits `Qty Pending` and `Qty Available`, and uses a bottom-aligned underline for manual `Qty To Order` entry. Process report remains A4 landscape, includes only non-zero ordered rows, and shows the actual entered quantities. Next iteration should compare:
 
 - header content
 - transfer code/reference placement
 - row columns
-- page orientation
 - page breaks
 - font sizes
 - NZ Blood branding

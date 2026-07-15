@@ -85,6 +85,8 @@ The publish folder should include:
 
 The publish helper currently enables ASP.NET Core stdout logging in generated `web.config` and creates `publish\logs`. This is useful while stabilising IIS deployment. Turn `stdoutLogEnabled` back to `false` once diagnostics are no longer needed.
 
+For UI/report-code-only hotfixes where dependencies, settings, and static assets have not changed, the minimum deployment is the new `publish\NZBlood.DirectedTransfer.Blazor.dll` followed by an IIS app-pool recycle. Use the full folder copy above for dependency, runtime, configuration, or asset changes.
+
 ## 4. Configure App Settings
 
 For the dev server, set:
@@ -200,11 +202,13 @@ Start with read-only behaviour:
 5. Confirm Pick From site is populated.
 6. Confirm item rows load.
 7. Confirm `QTY Pending`, `QTY Available`, and `Order Up To` match the Wisej app for the same site.
-8. Confirm Print and Process are disabled until at least one line has a `QTY to Order`.
-9. Enter a `QTY to Order` greater than available and confirm the line-level warning appears below that row. The entered value should remain visible.
-10. Click Print.
-11. Confirm the banner says `Building report...` and the PDF downloads automatically.
-12. Confirm the PDF has no Syncfusion trial watermark.
+8. Confirm Print is enabled after items load, even when no quantities are entered.
+9. Confirm Process remains disabled until at least one line has a `QTY to Order`.
+10. Enter a `QTY to Order` greater than available and confirm the line-level warning appears below that row. The entered value should remain visible.
+11. Click Print.
+12. Confirm the banner says `Building report...` and the PDF downloads automatically.
+13. Confirm the print PDF is portrait, includes all item rows, excludes `Qty Pending` and `Qty Available`, and shows a bottom-aligned underline instead of entered `Qty To Order` values.
+14. Confirm the PDF has no Syncfusion trial watermark.
 
 Then test processing with a controlled test case:
 
@@ -218,7 +222,7 @@ Then test processing with a controlled test case:
    - `nzbDirectedTransferEmailLne`
    - `PanatrackerGP7_DirectedTransOrder`
    - `PanatrackerGP7_DirectedTransOrderUnit`
-6. Confirm the processed report contains only ordered lines.
+6. Confirm the processed report contains only ordered lines and shows the actual entered `Qty To Order` values.
 7. Confirm the processed PDF downloads automatically.
 8. If `Smtp:SendEmail=1`, confirm email delivery and PDF attachment.
 9. If `Smtp:SendEmail=0`, confirm Process completes without attempting SMTP.
@@ -299,11 +303,13 @@ Browser login prompt before app opens:
 - [ ] POU site list loads.
 - [ ] Item grid matches Wisej for at least one site.
 - [ ] Quantity validation works.
-- [ ] Print and Process are disabled until at least one item quantity is entered.
+- [ ] Print is enabled once item rows load, even with no item quantities entered.
+- [ ] Process is disabled until at least one item quantity is entered.
 - [ ] Filtering, paging, and ordered-only view work.
-- [ ] Print PDF generates and downloads automatically.
+- [ ] Print PDF generates and downloads automatically in portrait format.
+- [ ] Print PDF includes all item rows, excludes `Qty Pending` and `Qty Available`, and shows a bottom-aligned underline for `Qty To Order`.
 - [ ] Process creates expected SQL/Panatracker rows.
-- [ ] Process report includes only non-zero quantities.
+- [ ] Process report includes only non-zero quantities and shows the actual entered `Qty To Order` values.
 - [ ] Browser download works after Print and Process.
 - [ ] SMTP sends to site email when `Smtp:SendEmail=1`.
 - [ ] Generated PDF has been compared against the sample Crystal PDFs.

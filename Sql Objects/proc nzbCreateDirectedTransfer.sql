@@ -41,7 +41,7 @@ BEGIN TRY
 	if @lineCount>0 begin
 		--create panatracker header
 		insert into PanatrackerGP7_DirectedTransOrder
-		select @tranCode,PickSiteID,null,POUSiteID,0,DocDate,null,null,DueDate,null,null,null,null,null,null,0,null,Id,UserID,null,null
+		select @tranCode,PickSiteID,null,POUSiteID,0,DocDate,null,null,DueDate,null,null,null,null,null,null,0,Reference,'',UserID,null,null
 		from nzbDirectedTransferHdr
 		where TransOrderCode=@tranCode
 

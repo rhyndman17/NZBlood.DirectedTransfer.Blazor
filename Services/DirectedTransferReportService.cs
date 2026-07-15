@@ -22,7 +22,10 @@ public sealed class DirectedTransferReportService : IDirectedTransferReportServi
     public Task<GeneratedReportFile> GenerateAsync(DirectedTransferReportRequest request, CancellationToken cancellationToken = default)
     {
         var html = BuildHtml(request);
-        var content = ConvertHtmlToPdf(html);
+        var orientation = request.ReportOption == 1
+            ? PdfPageOrientation.Portrait
+            : PdfPageOrientation.Landscape;
+        var content = ConvertHtmlToPdf(html, orientation);
         var fileName = string.IsNullOrWhiteSpace(request.TransferOrderCode)
             ? request.User.UserId + "_DTPick.pdf"
             : request.TransferOrderCode + ".pdf";
@@ -31,7 +34,7 @@ public sealed class DirectedTransferReportService : IDirectedTransferReportServi
         return Task.FromResult(report);
     }
 
-    private byte[] ConvertHtmlToPdf(string html)
+    private byte[] ConvertHtmlToPdf(string html, PdfPageOrientation orientation)
     {
         try
         {
@@ -39,8 +42,9 @@ public sealed class DirectedTransferReportService : IDirectedTransferReportServi
             var settings = new BlinkConverterSettings
             {
                 Margin = new PdfMargins { All = 24 },
-                Orientation = PdfPageOrientation.Landscape,
-                PdfPageSize = PdfPageSize.A4
+                Orientation = orientation,
+                PdfPageSize = PdfPageSize.A4,
+                ViewPortSize = new Syncfusion.Drawing.Size(orientation == PdfPageOrientation.Portrait ? 1000 : 1100, 0)
             };
             settings.CommandLineArguments.Add("--no-sandbox");
             converter.ConverterSettings = settings;
@@ -78,19 +82,23 @@ public sealed class DirectedTransferReportService : IDirectedTransferReportServi
             <head>
             <meta charset="utf-8">
             <style>
-            body { color: #201f1e; font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; margin: 0; }
+            body { color: #201f1e; font-family: 'Segoe UI', Arial, sans-serif; font-size: 14px; margin: 0; }
             .header { align-items: start; border-bottom: 2px solid #a4262c; display: flex; justify-content: space-between; padding-bottom: 12px; }
-            h1 { font-size: 22px; margin: 0 0 6px; }
+            h1 { font-size: 24px; margin: 0 0 6px; }
             .meta { display: grid; gap: 4px; grid-template-columns: 120px 1fr; margin-top: 10px; }
             .meta span:nth-child(odd) { color: #605e5c; font-weight: 700; text-transform: uppercase; }
             .brand { color: #a4262c; font-size: 18px; font-weight: 800; text-align: right; }
-            table { border-collapse: collapse; margin-top: 16px; width: 100%; }
-            th { background: #faf9f8; border-bottom: 1px solid #c8c6c4; color: #323130; font-size: 11px; padding: 8px; text-align: left; text-transform: uppercase; }
-            td { border-bottom: 1px solid #edebe9; padding: 7px 8px; vertical-align: top; }
-            .num { text-align: right; white-space: nowrap; }
+            table { border-collapse: collapse; margin-top: 16px; table-layout: fixed; width: 100%; }
+            th { background: #faf9f8; border-bottom: 1px solid #c8c6c4; color: #323130; font-size: 12px; padding: 6px 4px; text-align: left; text-transform: uppercase; }
+            td { border-bottom: 1px solid #edebe9; font-size: 14px; padding: 6px 4px; vertical-align: top; }
+            .code { overflow-wrap: anywhere; }
+            .text { overflow-wrap: anywhere; word-break: normal; }
+            .num { padding-left: 3px; padding-right: 3px; text-align: right; white-space: nowrap; }
+            .center-num { padding-left: 3px; padding-right: 3px; text-align: center; white-space: nowrap; }
+            .write-in-cell { min-height: 2.4em; position: relative; }
+            .write-in { border-bottom: 1px solid #201f1e; bottom: 6px; display: block; left: 4px; position: absolute; right: 4px; }
             .center { text-align: center; white-space: nowrap; }
             .pending { color: #a4262c; font-weight: 700; }
-            .footer { color: #605e5c; font-size: 10px; margin-top: 16px; }
             </style>
             </head>
             <body>
@@ -108,8 +116,21 @@ public sealed class DirectedTransferReportService : IDirectedTransferReportServi
         AddMeta(html, "Date", DateTime.Now.ToString("dd MMM yyyy HH:mm"));
         html.AppendLine("</div></div><div class=\"brand\">NZ Blood<br>Directed Transfer</div></section>");
 
-        html.AppendLine("<table><thead><tr>");
-        foreach (var heading in new[] { "Priority", "GP Item Code", "Vendor Item", "Description", "UOM", "UOM Description", "Qty Pending", "Qty Available", "Order Up To", "Qty To Order" })
+        html.AppendLine("""
+            <table>
+            <colgroup>
+                <col style="width: 6%">
+                <col style="width: 13%">
+                <col style="width: 11%">
+                <col style="width: 31%">
+                <col style="width: 6%">
+                <col style="width: 18%">
+                <col style="width: 7%">
+                <col style="width: 8%">
+            </colgroup>
+            <thead><tr>
+            """);
+        foreach (var heading in new[] { "Priority", "GP Item Code", "Vendor Item", "Description", "UOM", "UOM Description", "Order Up To", "Qty To Order" })
         {
             html.AppendLine("<th>" + heading + "</th>");
         }
@@ -119,20 +140,25 @@ public sealed class DirectedTransferReportService : IDirectedTransferReportServi
         {
             html.AppendLine("<tr>");
             html.AppendLine("<td class=\"center\">" + item.Priority.ToString("N0") + "</td>");
-            html.AppendLine("<td>" + Html(item.ItemNumber) + "</td>");
-            html.AppendLine("<td>" + Html(item.VendorItemNumber) + "</td>");
-            html.AppendLine("<td>" + Html(item.ItemDescription) + "</td>");
-            html.AppendLine("<td>" + Html(item.UnitOfMeasure) + "</td>");
-            html.AppendLine("<td>" + Html(item.UomLongDescription) + "</td>");
-            html.AppendLine("<td class=\"num pending\">" + item.QtyPending.ToString("N0") + "</td>");
-            html.AppendLine("<td class=\"num\">" + item.QtyAvailable.ToString("N0") + "</td>");
-            html.AppendLine("<td class=\"num\">" + item.OrderUpToLevel.ToString("N0") + "</td>");
-            html.AppendLine("<td class=\"num\">" + item.QtyToOrder.ToString("N0") + "</td>");
+            html.AppendLine("<td class=\"code\">" + Html(item.ItemNumber) + "</td>");
+            html.AppendLine("<td class=\"code\">" + Html(item.VendorItemNumber) + "</td>");
+            html.AppendLine("<td class=\"text\">" + Html(item.ItemDescription) + "</td>");
+            html.AppendLine("<td class=\"code\">" + Html(item.UnitOfMeasure) + "</td>");
+            html.AppendLine("<td class=\"text\">" + Html(item.UomLongDescription) + "</td>");
+            html.AppendLine("<td class=\"center-num\">" + item.OrderUpToLevel.ToString("N0") + "</td>");
+            if (request.ReportOption == 1)
+            {
+                html.AppendLine("<td class=\"num write-in-cell\"><span class=\"write-in\"></span></td>");
+            }
+            else
+            {
+                html.AppendLine("<td class=\"num\">" + item.QtyToOrder.ToString("N0") + "</td>");
+            }
+
             html.AppendLine("</tr>");
         }
 
         html.AppendLine("</tbody></table>");
-        html.AppendLine("<p class=\"footer\">Qty Pending includes outstanding Panatracker transfers from all locations.</p>");
         html.AppendLine("</body></html>");
         return html.ToString();
     }

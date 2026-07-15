@@ -55,13 +55,13 @@ http://localhost:5222
 - Inline editing for `QTY to Order` only.
 - UOM is read-only in the Blazor migration.
 - Validation prevents negative quantities and displays line-level warnings when quantity ordered is greater than available quantity. The entered value remains visible for user correction.
-- Print and Process are enabled only when at least one line has a quantity to order.
+- Print is enabled once a site has loaded items. Process is enabled only when at least one line has a quantity to order.
 - Process confirmation dialog.
 - SQL-backed service for live mode.
 - Mock service for local UI review.
 - Report generation from HTML to PDF.
-- Print generates and downloads the PDF directly.
-- Process creates the transfer, generates and downloads the processed PDF, and optionally emails it depending on `Smtp:SendEmail`.
+- Print generates and downloads a portrait pick-list PDF directly. It includes all item rows, leaves `Qty To Order` as a write-in underline, and does not require entered quantities.
+- Process creates the transfer, generates and downloads the processed PDF, and optionally emails it depending on `Smtp:SendEmail`. The process report includes only ordered rows and shows the entered `Qty To Order` values.
 - Email service uses the selected site's `SiteTransferEmailAddress` when enabled.
 - Configurable IIS path base and default page size.
 - Permanent `DirectedTransfer:MainMessage` notice displayed in the selection panel.
@@ -225,6 +225,8 @@ Publish:
 
 The publish script clears `.\publish` before publishing to avoid nested publish output. If a dev IIS deployment has had several partial file copies and starts showing runtime/dependency errors, perform a full clean deploy from `.\publish`.
 
+For a narrow hotfix where dependencies and configuration have not changed, deploying the new `publish\NZBlood.DirectedTransfer.Blazor.dll` and recycling the IIS app pool is sufficient for UI/report-code-only changes. Use a full clean deploy when package dependencies, runtime files, configuration files, or static assets change.
+
 Update GitHub:
 
 ```powershell
@@ -245,8 +247,8 @@ Override if needed:
 
 ## Known Follow-Up Work
 
-- Compare the generated PDF against the sample Crystal PDFs in `..\NZBlood.DirectedTransferWI\SamplePDF`.
-- Tune report spacing, columns, and page breaks to better match the Crystal report.
+- Compare the generated process PDF against the sample Crystal PDFs in `..\NZBlood.DirectedTransferWI\SamplePDF`.
+- Tune report page breaks further if production item volumes expose wrapping issues.
 - Test Process against a controlled POU site and confirm Panatracker rows are created correctly.
 - Confirm whether the SQL-side `nzbCreateDirectedTransfer` procedure should raise errors on failure instead of returning a result set from its catch block.
 - Confirm SMTP settings and whether relay allows the IIS app server before enabling `Smtp:SendEmail=1`.
