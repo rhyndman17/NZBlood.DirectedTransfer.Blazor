@@ -30,7 +30,8 @@
             <header>Process directed transfer</header>
             <p>Please confirm you would like to process the selected quantities.</p>
             <dl class="dialog-summary">
-                <div><dt>POU Site</dt><dd>@_selectedSite?.LocationName</dd></div>
+                <div class="wide"><dt>Order Form</dt><dd>@SelectedOrderFormReference</dd></div>
+                <div><dt>Point of Use Site</dt><dd>@_selectedSite?.LocationName</dd></div>
                 <div><dt>Pick Site</dt><dd>@_selectedSite?.PickFromSiteName</dd></div>
                 <div class="wide"><dt>Email To</dt><dd>@SafeText(_selectedSite?.SiteTransferEmailAddress ?? string.Empty, "Not configured")</dd></div>
                 <div><dt>Lines</dt><dd>@OrderLineCount</dd></div>
@@ -44,31 +45,38 @@
 }
 
 <section class="command-bar transfer-command-bar">
-    <label class="search-box">
-        <span>Point of Use Site</span>
-        <select @key="_siteSelectorKey" @ref="_siteSelector" value="@_selectedPouSiteCode" @onchange="OnSiteChangedAsync" disabled="@_loadingSites">
-            <option value="">Select site</option>
-            @foreach (var site in _sites)
-            {
-                <option value="@site.LocationCode">@site.LocationCode</option>
-            }
-        </select>
-    </label>
+    <div class="command-fields" style="grid-column:1/-1; display:grid; grid-template-columns:minmax(320px,1fr) 100px 100px minmax(200px,.45fr) max-content; gap:16px; align-items:end">
+        <label class="search-box">
+            <span>Order Form</span>
+            <select @key="_orderFormSelectorKey" @ref="_orderFormSelector" value="@_selectedOrderFormId" @onchange="OnOrderFormChangedAsync" disabled="@_loadingOrderForms">
+                <option value="">Select order form</option>
+                @foreach (var form in _orderForms)
+                {
+                    <option value="@form.OrderFormId">@form.DisplayName</option>
+                }
+            </select>
+        </label>
 
-    <label class="search-box">
-        <span>Pick From Site</span>
-        <input value="@_selectedSite?.PickFromSite" readonly />
-    </label>
+        <label class="search-box site-code-box">
+            <span>Point of Use Site</span>
+            <input value="@_selectedSite?.LocationCode" readonly />
+        </label>
 
-    <label class="search-box reference-box">
-        <span>Order Reference</span>
-        <input @bind="_orderReference" @bind:event="oninput" />
-    </label>
+        <label class="search-box site-code-box">
+            <span>Pick From Site</span>
+            <input value="@_selectedSite?.PickFromSite" readonly />
+        </label>
 
-    <div class="button-group command-actions">
-        <button class="button secondary" @onclick="RefreshAsync" disabled="@_loadingItems">Refresh</button>
-        <button class="button secondary" @onclick="PrintAsync" disabled="@(!CanReport)">Print</button>
-        <button class="button primary" @onclick="OpenProcessDialog" disabled="@(!CanProcess)">Process</button>
+        <label class="search-box reference-box">
+            <span>Order Reference</span>
+            <input @bind="_orderReference" @bind:event="oninput" />
+        </label>
+
+        <div class="button-group command-actions" style="flex-wrap:nowrap; white-space:nowrap">
+            <button class="button secondary" @onclick="RefreshAsync" disabled="@_loadingItems">Refresh</button>
+            <button class="button secondary" @onclick="PrintAsync" disabled="@(!CanReport)">Print</button>
+            <button class="button primary" @onclick="OpenProcessDialog" disabled="@(!CanProcess)">Process</button>
+        </div>
     </div>
 
     @if (!string.IsNullOrWhiteSpace(MainMessage))
@@ -79,7 +87,7 @@
     @if (_selectedSite is not null)
     {
         <section class="site-summary compact">
-            <div><span>POU Site</span><strong>@_selectedSite.LocationName</strong></div>
+            <div><span>Point of Use Site</span><strong>@_selectedSite.LocationName</strong></div>
             <div><span>Pick Site</span><strong>@_selectedSite.PickFromSiteName</strong></div>
             <div><span>Email To</span><strong>@SafeText(_selectedSite.SiteTransferEmailAddress, "Not configured")</strong></div>
         </section>
@@ -127,8 +135,8 @@
     else if (_selectedSite is null)
     {
         <div class="empty-state">
-            <h2>Select a Point of Use site</h2>
-            <p>The pick site and replenishment items will load automatically.</p>
+            <h2>Select an order form</h2>
+            <p>The Point of Use site, Pick From site, and order-form items will load automatically.</p>
         </div>
     }
     else if (FilteredItemCount == 0)
@@ -144,6 +152,7 @@
             <table class="transfer-table">
                 <thead>
                     <tr>
+                        <th class="center">Zone</th>
                         <th class="center">Priority</th>
                         <th>GP Item Code</th>
                         <th>Item Description</th>
@@ -151,7 +160,7 @@
                         <th>UOM Long Desc</th>
                         <th class="num">QTY Pending</th>
                         <th class="num">QTY Available at Pick Location</th>
-                        <th class="num">POU Site Order Up To Level</th>
+                        <th class="num">Point of Use Site Order Up To Level</th>
                         <th class="num">QTY to Order</th>
                     </tr>
                 </thead>
@@ -159,6 +168,7 @@
                     @foreach (var item in PagedItems)
                     {
                         <tr @key="item.ItemNumber" class="@(!string.IsNullOrWhiteSpace(item.ValidationMessage) ? "line-has-error" : null)">
+                            <td class="center">@item.Zone</td>
                             <td class="center">@item.Priority.ToString("N0")</td>
                             <td>@item.ItemNumber</td>
                             <td>@item.ItemDescription</td>
@@ -174,7 +184,7 @@
                         @if (!string.IsNullOrWhiteSpace(item.ValidationMessage))
                         {
                             <tr @key="@("error-" + item.ItemNumber)" class="line-error-row">
-                                <td colspan="9">
+                                <td colspan="10">
                                     <div class="line-error-banner">@item.ValidationMessage</div>
                                 </td>
                             </tr>
@@ -193,20 +203,20 @@
 
 @code {
     private UserContext? _user;
-    private IReadOnlyList<DirectedTransferSite> _sites = [];
+    private IReadOnlyList<DirectedTransferOrderForm> _orderForms = [];
     private List<DirectedTransferItem> _items = [];
     private DirectedTransferSite? _selectedSite;
     private GeneratedReportFile? _lastReport;
-    private string _selectedPouSiteCode = string.Empty;
+    private string _selectedOrderFormId = string.Empty;
     private string _orderReference = string.Empty;
     private string _message = string.Empty;
     private string _messageTone = "info";
-    private int _siteSelectorKey;
-    private ElementReference _siteSelector;
+    private int _orderFormSelectorKey;
+    private ElementReference _orderFormSelector;
     private string _itemFilter = string.Empty;
     private int _pageNumber = 1;
     private int _pageSize = 50;
-    private bool _loadingSites = true;
+    private bool _loadingOrderForms = true;
     private bool _loadingItems;
     private bool _reporting;
     private bool _processing;
@@ -217,6 +227,8 @@
     private bool CanProcess => CanReport && !_processing && OrderLineCount > 0;
     private int OrderLineCount => _items.Count(item => item.QtyToOrder > 0);
     private string MainMessage => Configuration["DirectedTransfer:MainMessage"] ?? string.Empty;
+    private string SelectedOrderFormReference => _orderForms.FirstOrDefault(form =>
+        string.Equals(form.OrderFormId, _selectedOrderFormId, StringComparison.OrdinalIgnoreCase))?.DisplayName ?? _selectedOrderFormId;
     private IReadOnlyList<DirectedTransferItem> FilteredItems => GetFilteredItems();
     private int FilteredItemCount => FilteredItems.Count;
     private int TotalPages => Math.Max(1, (int)Math.Ceiling(FilteredItemCount / (double)_pageSize));
@@ -232,11 +244,11 @@
     {
         try
         {
-            _loadingSites = true;
+            _loadingOrderForms = true;
             _pageSize = GetConfiguredPageSize();
             _user = await UserContextService.GetCurrentUserAsync();
-            _sites = await TransferService.GetPouSitesAsync();
-            _siteSelectorKey++;
+            _orderForms = await TransferService.GetOrderFormsAsync();
+            _orderFormSelectorKey++;
         }
         catch (Exception ex)
         {
@@ -245,7 +257,7 @@
         }
         finally
         {
-            _loadingSites = false;
+            _loadingOrderForms = false;
         }
     }
 
@@ -253,23 +265,23 @@
     {
         if (firstRender)
         {
-            await _siteSelector.FocusAsync();
+            await _orderFormSelector.FocusAsync();
         }
     }
 
-    private async Task OnSiteChangedAsync(ChangeEventArgs args)
+    private async Task OnOrderFormChangedAsync(ChangeEventArgs args)
     {
-        _selectedPouSiteCode = Convert.ToString(args.Value) ?? string.Empty;
-        await LoadSelectedSiteAsync();
+        _selectedOrderFormId = Convert.ToString(args.Value) ?? string.Empty;
+        await LoadSelectedOrderFormAsync();
     }
 
-    private async Task LoadSelectedSiteAsync()
+    private async Task LoadSelectedOrderFormAsync()
     {
         _selectedSite = null;
         _lastReport = null;
         _items.Clear();
         ResetItemView();
-        if (string.IsNullOrWhiteSpace(_selectedPouSiteCode))
+        if (string.IsNullOrWhiteSpace(_selectedOrderFormId))
         {
             _message = string.Empty;
             _messageTone = "info";
@@ -279,10 +291,10 @@
         try
         {
             _loadingItems = true;
-            _message = "Loading site options...";
+            _message = "Loading order form...";
             _messageTone = "info";
-            _selectedSite = await TransferService.GetPouSiteAsync(_selectedPouSiteCode)
-                ?? _sites.FirstOrDefault(site => site.LocationCode == _selectedPouSiteCode);
+            _selectedSite = _orderForms.FirstOrDefault(form =>
+                string.Equals(form.OrderFormId, _selectedOrderFormId, StringComparison.OrdinalIgnoreCase))?.Site;
         }
         catch (Exception ex)
         {
@@ -297,19 +309,19 @@
 
         if (_selectedSite is null)
         {
-            _message = "The selected POU site could not be found.";
+            _message = "The selected order form could not be found.";
             _messageTone = "error";
             return;
         }
 
         if (string.IsNullOrWhiteSpace(_selectedSite.PickFromSite))
         {
-            _message = "No Pick From site is configured in nzbSiteOptions for POU site " + _selectedSite.LocationCode + ".";
+            _message = "No Pick From site is configured for order form " + _selectedOrderFormId + ".";
             _messageTone = "error";
             return;
         }
 
-        _message = "Resolved Pick From site " + _selectedSite.PickFromSite + " for POU site " + _selectedSite.LocationCode + ".";
+        _message = "Loaded order form " + _selectedOrderFormId + ".";
         _messageTone = "success";
 
         if (_selectedSite is not null)
@@ -320,12 +332,12 @@
 
     private async Task RefreshAsync()
     {
-        if (string.IsNullOrWhiteSpace(_selectedPouSiteCode))
+        if (string.IsNullOrWhiteSpace(_selectedOrderFormId))
         {
             return;
         }
 
-        await LoadSelectedSiteAsync();
+        await LoadSelectedOrderFormAsync();
     }
 
     private async Task LoadItemsAsync()
@@ -340,9 +352,9 @@
             _loadingItems = true;
             _message = "Loading items...";
             _messageTone = "info";
-            _items = (await TransferService.GetItemsAsync(_selectedSite.PickFromSite, _selectedSite.LocationCode)).ToList();
+            _items = (await TransferService.GetItemsAsync(_selectedOrderFormId, _selectedSite.PickFromSite, _selectedSite.LocationCode)).ToList();
             ResetItemView();
-            _message = "Pick From " + _selectedSite.PickFromSite + " resolved; " + _items.Count.ToString("N0") + " item(s)";
+            _message = "Order form " + _selectedOrderFormId + "; " + _items.Count.ToString("N0") + " item(s)";
             _messageTone = "success";
         }
         catch (Exception ex)
@@ -397,7 +409,8 @@
         {
             var filter = _itemFilter.Trim();
             query = query.Where(item =>
-                Contains(item.ItemNumber, filter)
+                Contains(item.Zone, filter)
+                || Contains(item.ItemNumber, filter)
                 || Contains(item.ItemDescription, filter)
                 || Contains(item.UnitOfMeasure, filter)
                 || Contains(item.UomLongDescription, filter)
@@ -586,6 +599,7 @@
             User = _user,
             Site = _selectedSite,
             Items = _items,
+            OrderFormReference = SelectedOrderFormReference,
             OrderReference = _orderReference,
             ReportOption = reportOption,
             TransferOrderCode = transferOrderCode

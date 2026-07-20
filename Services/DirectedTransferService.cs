@@ -14,24 +14,25 @@ public sealed class DirectedTransferService : IDirectedTransferService
             ?? throw new InvalidOperationException("Connection string 'DirectedTransfer' is not configured.");
     }
 
-    public async Task<IReadOnlyList<DirectedTransferSite>> GetPouSitesAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<DirectedTransferOrderForm>> GetOrderFormsAsync(CancellationToken cancellationToken = default)
     {
         const string sql = """
-            select distinct
-                   rtrim(i.LOCNCODE) LocationCode,
+            select rtrim(f.OrderFormID) OrderFormID,
+                   rtrim(isnull(f.Description, '')) Description,
+                   rtrim(f.PointOfUseSite) LocationCode,
                    rtrim(isnull(pou.LOCNDSCR, '')) LocationName,
-                   rtrim(isnull(s.eKanBanPickFromSite, '')) PickFromSite,
+                   rtrim(f.PickFromSite) PickFromSite,
                    rtrim(isnull(pick.LOCNDSCR, '')) PickFromSiteName,
                    rtrim(isnull(s.SiteTransferEmailAddress, '')) SiteTransferEmailAddress
-            from nzbDirectedTransferItems i
-            left join IV40700 pou on pou.LOCNCODE=i.LOCNCODE
-            left join nzbSiteOptions s on s.LocationCode=i.LOCNCODE
-            left join IV40700 pick on pick.LOCNCODE=s.eKanBanPickFromSite
-            where i.DirectedTransferItem=1 and i.LOCNCODE not like '%LG'
-            order by rtrim(i.LOCNCODE)
+            from nzbDirectedTransferOrderForms f
+            left join IV40700 pou on rtrim(pou.LOCNCODE)=rtrim(f.PointOfUseSite)
+            left join nzbSiteOptions s on rtrim(s.LocationCode)=rtrim(f.PointOfUseSite)
+            left join IV40700 pick on rtrim(pick.LOCNCODE)=rtrim(f.PickFromSite)
+            where isnull(f.Inactive, 0)=0
+            order by rtrim(f.OrderFormID)
             """;
 
-        var sites = new List<DirectedTransferSite>();
+        var forms = new List<DirectedTransferOrderForm>();
         using var connection = new SqlConnection(_connectionString);
         using var command = new SqlCommand(sql, connection);
         await connection.OpenAsync(cancellationToken);
@@ -39,56 +40,25 @@ public sealed class DirectedTransferService : IDirectedTransferService
 
         while (await reader.ReadAsync(cancellationToken))
         {
-            sites.Add(new DirectedTransferSite
+            forms.Add(new DirectedTransferOrderForm
             {
-                LocationCode = reader.GetTrimmedString("LocationCode"),
-                LocationName = reader.GetTrimmedString("LocationName"),
-                PickFromSite = reader.GetTrimmedString("PickFromSite"),
-                PickFromSiteName = reader.GetTrimmedString("PickFromSiteName"),
-                SiteTransferEmailAddress = reader.GetTrimmedString("SiteTransferEmailAddress")
+                OrderFormId = reader.GetTrimmedString("OrderFormID"),
+                Description = reader.GetTrimmedString("Description"),
+                Site = new DirectedTransferSite
+                {
+                    LocationCode = reader.GetTrimmedString("LocationCode"),
+                    LocationName = reader.GetTrimmedString("LocationName"),
+                    PickFromSite = reader.GetTrimmedString("PickFromSite"),
+                    PickFromSiteName = reader.GetTrimmedString("PickFromSiteName"),
+                    SiteTransferEmailAddress = reader.GetTrimmedString("SiteTransferEmailAddress")
+                }
             });
         }
 
-        return sites;
+        return forms;
     }
 
-    public async Task<DirectedTransferSite?> GetPouSiteAsync(string pouSiteId, CancellationToken cancellationToken = default)
-    {
-        const string sql = """
-            select top 1
-                   rtrim(@pouSiteId) LocationCode,
-                   rtrim(isnull(pou.LOCNDSCR, '')) LocationName,
-                   rtrim(isnull(s.eKanBanPickFromSite, '')) PickFromSite,
-                   rtrim(isnull(pick.LOCNDSCR, '')) PickFromSiteName,
-                   rtrim(isnull(s.SiteTransferEmailAddress, '')) SiteTransferEmailAddress
-            from nzbSiteOptions s
-            left join IV40700 pou on rtrim(pou.LOCNCODE)=rtrim(s.LocationCode)
-            left join IV40700 pick on rtrim(pick.LOCNCODE)=rtrim(s.eKanBanPickFromSite)
-            where rtrim(s.LocationCode)=rtrim(@pouSiteId)
-            """;
-
-        using var connection = new SqlConnection(_connectionString);
-        using var command = new SqlCommand(sql, connection);
-        command.Parameters.AddWithValue("@pouSiteId", pouSiteId);
-        await connection.OpenAsync(cancellationToken);
-        using var reader = await command.ExecuteReaderAsync(cancellationToken);
-
-        if (!await reader.ReadAsync(cancellationToken))
-        {
-            return null;
-        }
-
-        return new DirectedTransferSite
-        {
-            LocationCode = reader.GetTrimmedString("LocationCode"),
-            LocationName = reader.GetTrimmedString("LocationName"),
-            PickFromSite = reader.GetTrimmedString("PickFromSite"),
-            PickFromSiteName = reader.GetTrimmedString("PickFromSiteName"),
-            SiteTransferEmailAddress = reader.GetTrimmedString("SiteTransferEmailAddress")
-        };
-    }
-
-    public async Task<IReadOnlyList<DirectedTransferItem>> GetItemsAsync(string pickFromSiteId, string pouSiteId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<DirectedTransferItem>> GetItemsAsync(string orderFormId, string pickFromSiteId, string pouSiteId, CancellationToken cancellationToken = default)
     {
         var items = new List<DirectedTransferItem>();
         using var connection = new SqlConnection(_connectionString);
@@ -97,6 +67,7 @@ public sealed class DirectedTransferService : IDirectedTransferService
             CommandType = CommandType.StoredProcedure,
             CommandTimeout = 240
         };
+        command.Parameters.AddWithValue("@orderFormId", orderFormId);
         command.Parameters.AddWithValue("@pickFromSiteId", pickFromSiteId);
         command.Parameters.AddWithValue("@pouSiteId", pouSiteId);
 
@@ -107,6 +78,7 @@ public sealed class DirectedTransferService : IDirectedTransferService
             var itemNumber = reader.GetTrimmedString("ITEMNMBR");
             items.Add(new DirectedTransferItem
             {
+                Zone = reader.GetTrimmedString("ZONE"),
                 Priority = reader.GetInt32OrDefault("DirectedTransferPriority"),
                 ItemNumber = itemNumber,
                 ItemDescription = reader.GetTrimmedString("ITEMDESC"),
@@ -128,7 +100,8 @@ public sealed class DirectedTransferService : IDirectedTransferService
         }
 
         return items
-            .OrderBy(item => GetPrioritySortValue(item.Priority))
+            .OrderBy(item => item.Zone, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(item => GetPrioritySortValue(item.Priority))
             .ThenBy(item => item.ItemNumber, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }

@@ -5,17 +5,16 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-ALTER proc [dbo].[nzbCalculateDirectedTransferItemWI] @pickFromSiteId varchar(20),@pouSiteId varchar(15), @itemNumber varchar(30) as
+CREATE OR ALTER proc [dbo].[nzbCalculateDirectedTransferItemWI] @orderFormId varchar(50),@pickFromSiteId varchar(20),@pouSiteId varchar(15), @itemNumber varchar(30) as
 
 with resourcePlanning as (
-	select q.ITEMNMBR,i.ITEMDESC,q.LOCNCODE 'POUSiteID',PLANNERID,QTYONHND,ATYALLOC,ORDRPNTQTY,ORDRUPTOLVL,u.BASEUOFM,i.UOMSCHDL,ud.QTYBSUOM,rtrim(ud.UOFMLONGDESC) UOFMLONGDESC
+	select q.ITEMNMBR,i.ITEMDESC,q.LOCNCODE 'POUSiteID',rtrim(isnull(d.ZONE,'')) ZONE,PLANNERID,QTYONHND,ATYALLOC,ORDRPNTQTY,ORDRUPTOLVL,u.BASEUOFM,i.UOMSCHDL,ud.QTYBSUOM,rtrim(ud.UOFMLONGDESC) UOFMLONGDESC
 		from IV00101 i
-		join nzbDirectedTransferItems d on d.ITEMNMBR=i.ITEMNMBR
-		join IV00102 q on q.ITEMNMBR=i.ITEMNMBR and q.LOCNCODE=d.LOCNCODE
+		join nzbDirectedTransferOrderFormItems d on rtrim(d.ITEMNMBR)=rtrim(i.ITEMNMBR) and rtrim(d.ORDER_ID)=rtrim(@orderFormId)
+		join IV00102 q on q.ITEMNMBR=i.ITEMNMBR and rtrim(q.LOCNCODE)=rtrim(@pouSiteId)
 		join IV40201 u on u.UOMSCHDL=i.UOMSCHDL
 		join IV40202 ud on u.UOMSCHDL=ud.UOMSCHDL and u.BASEUOFM=ud.UOFM
-		where q.LOCNCODE=@pouSiteId and q.ITEMNMBR=@itemNumber 
-		and d.DirectedTransferItem=1 ),
+		where rtrim(q.LOCNCODE)=rtrim(@pouSiteId) and q.ITEMNMBR=@itemNumber ),
 pickFromSiteQty as (
 		select ITEMNMBR,LOCNCODE, isnull(QTYONHND-ATYALLOC,0) 'QtyAvailable' from IV00102 where LOCNCODE=@pickFromSiteId and RCRDTYPE=2 and ITEMNMBR=@itemNumber),
 panaPickingPICKQty as (
@@ -37,9 +36,9 @@ panaPickingPOUQty as (
 --select * from pickFromSiteQty
 
 select r.ITEMNMBR,r.ITEMDESC,r.POUSiteID,isnull(p.QtyAvailable,0)-isnull(pickt.PanaPickingPICKQty,0) 'QtyAvailable',@pickFromSiteId 'PickFromSite',
-			r.BASEUOFM,isnull(pickt.PanaPickingPICKQty,0) PanaPickingPICKQty,isnull(pout.PanaPickingPOUQty,0) PanaPickingPOUQty, r.ORDRUPTOLVL,r.UOMSCHDL,r.QTYBSUOM,r.UOFMLONGDESC
+			r.BASEUOFM,isnull(pickt.PanaPickingPICKQty,0) PanaPickingPICKQty,isnull(pout.PanaPickingPOUQty,0) PanaPickingPOUQty, r.ORDRUPTOLVL,r.UOMSCHDL,r.QTYBSUOM,r.UOFMLONGDESC,r.ZONE
 from resourcePlanning r
 left join pickFromSiteQty p on r.ITEMNMBR=p.ITEMNMBR
 left join panaPickingPICKQty pickt on r.ITEMNMBR=pickt.ItemCode and pickt.SourceLocCode=@pickFromSiteId
 left join panaPickingPOUQty pout on r.ITEMNMBR=pout.ItemCode and pout.DestinationLocCode=@pouSiteId
-order by r.ITEMNMBR
+order by r.ZONE,r.ITEMNMBR

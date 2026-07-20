@@ -4,41 +4,34 @@ namespace NZBlood.DirectedTransfer.Blazor.Services;
 
 public sealed class MockDirectedTransferService : IDirectedTransferService
 {
-    public Task<IReadOnlyList<DirectedTransferSite>> GetPouSitesAsync(CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<DirectedTransferOrderForm>> GetOrderFormsAsync(CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<DirectedTransferSite> sites =
+        IReadOnlyList<DirectedTransferOrderForm> forms =
         [
             new()
             {
-                LocationCode = "AKLD",
-                LocationName = "Auckland Hospital POU",
-                PickFromSite = "AKLG",
-                PickFromSiteName = "Auckland Logistics",
-                SiteTransferEmailAddress = "site.transfer@example.org"
+                OrderFormId = "AKLD-AKLG",
+                Description = "Auckland Hospital Consumables",
+                Site = new() { LocationCode = "AKLD", LocationName = "Auckland Hospital POU", PickFromSite = "AKLG", PickFromSiteName = "Auckland Logistics", SiteTransferEmailAddress = "site.transfer@example.org" }
             },
             new()
             {
-                LocationCode = "WGTN",
-                LocationName = "Wellington Hospital POU",
-                PickFromSite = "WGLG",
-                PickFromSiteName = "Wellington Logistics",
-                SiteTransferEmailAddress = "wellington.transfer@example.org"
+                OrderFormId = "WGTN-WGLG",
+                Description = "Wellington Hospital Consumables",
+                Site = new() { LocationCode = "WGTN", LocationName = "Wellington Hospital POU", PickFromSite = "WGLG", PickFromSiteName = "Wellington Logistics", SiteTransferEmailAddress = "wellington.transfer@example.org" }
             }
         ];
 
-        return Task.FromResult(sites);
+        return Task.FromResult(forms);
     }
 
-    public async Task<DirectedTransferSite?> GetPouSiteAsync(string pouSiteId, CancellationToken cancellationToken = default)
-        => (await GetPouSitesAsync(cancellationToken))
-            .FirstOrDefault(site => string.Equals(site.LocationCode, pouSiteId, StringComparison.OrdinalIgnoreCase));
-
-    public Task<IReadOnlyList<DirectedTransferItem>> GetItemsAsync(string pickFromSiteId, string pouSiteId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<DirectedTransferItem>> GetItemsAsync(string orderFormId, string pickFromSiteId, string pouSiteId, CancellationToken cancellationToken = default)
     {
         IReadOnlyList<DirectedTransferItem> items =
         [
             new()
             {
+                Zone = "A",
                 Priority = 1,
                 ItemNumber = "BAG-CPDA-450",
                 ItemDescription = "Blood collection bag CPDA 450ml",
@@ -54,6 +47,7 @@ public sealed class MockDirectedTransferService : IDirectedTransferService
             },
             new()
             {
+                Zone = "A",
                 Priority = 2,
                 ItemNumber = "TUBE-EDTA-10",
                 ItemDescription = "EDTA tube 10ml lavender top",
@@ -69,6 +63,7 @@ public sealed class MockDirectedTransferService : IDirectedTransferService
             },
             new()
             {
+                Zone = "B",
                 Priority = 3,
                 ItemNumber = "KIT-XMATCH",
                 ItemDescription = "Crossmatch consumables kit",
@@ -85,7 +80,8 @@ public sealed class MockDirectedTransferService : IDirectedTransferService
         ];
 
         return Task.FromResult<IReadOnlyList<DirectedTransferItem>>(items
-            .OrderBy(item => item.Priority <= 0 ? int.MaxValue : item.Priority)
+            .OrderBy(item => item.Zone, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(item => item.Priority <= 0 ? int.MaxValue : item.Priority)
             .ThenBy(item => item.ItemNumber, StringComparer.OrdinalIgnoreCase)
             .ToList());
     }

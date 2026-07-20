@@ -14,7 +14,7 @@ C:\Users\RobertHyndman\OneDrive - Altara Limited\Dev\General\NZBlood.ApprovalWor
 
 ## Current State
 
-The Blazor migration is functional in mock mode and has been tested on the dev IIS server against live SQL. The main directed transfer workflow is operational, including POU selection, item loading, quantity entry, Print PDF, and Process test flow with email disabled by configuration.
+The Blazor migration is functional in mock mode and has been tested on the dev IIS server against live SQL. The workflow now begins with an active order-form selection; the form supplies the POU site, Pick From site, and item list.
 
 Verified command:
 
@@ -47,11 +47,11 @@ http://localhost:5222
 
 ## Migrated Functionality
 
-- Point of Use site selector.
-- Pick From site display, resolved from `nzbSiteOptions`.
+- Active order-form selector, displayed as `OrderFormID : Description`.
+- Read-only Point of Use and Pick From site fields supplied by `nzbDirectedTransferOrderForms` and shown beside one another after selection.
 - Order reference entry.
-- Refresh, Print, and Process actions. Refresh re-resolves the selected POU site and rebuilds the item list.
-- Directed transfer item list with paging, filtering, ordered-only view, and inline quantity entry.
+- Refresh, Print, and Process actions. Refresh reloads the selected order form and rebuilds its item list.
+- Directed transfer item list with Zone, Zone/Priority ordering, paging, filtering, ordered-only view, and inline quantity entry.
 - Inline editing for `QTY to Order` only.
 - UOM is read-only in the Blazor migration.
 - Validation prevents negative quantities and displays line-level warnings when quantity ordered is greater than available quantity. The entered value remains visible for user correction.
@@ -61,6 +61,7 @@ http://localhost:5222
 - Mock service for local UI review.
 - Report generation from HTML to PDF.
 - Print generates and downloads a portrait pick-list PDF directly. It includes all item rows, leaves `Qty To Order` as a write-in underline, and does not require entered quantities.
+- Print and processed reports identify the selected order form as `OrderFormID : Description`, separately from the user-entered order reference.
 - Process creates the transfer, generates and downloads the processed PDF, and optionally emails it depending on `Smtp:SendEmail`. The process report includes only ordered rows and shows the entered `Qty To Order` values.
 - Email service uses the selected site's `SiteTransferEmailAddress` when enabled.
 - Configurable IIS path base and default page size.
@@ -70,7 +71,7 @@ http://localhost:5222
 ## Important Files
 
 - `Scripts/Publish Web Application.ps1`  
-  Publishes the Blazor app to `.\publish`.
+  Assigns a `yy.MM.dd.HHmm` deployment version, updates `BuildInfo.cs`, and publishes the Blazor app to `.\publish`. The output also contains `version.txt`.
 
 - `Scripts/Update-GitHub.ps1`  
   Initializes/updates a Git repository, builds the project, commits changes, and pushes to GitHub.
@@ -115,11 +116,13 @@ http://localhost:5222
 
 The live service expects these existing SQL objects in the configured database:
 
-- `nzbDirectedTransferItems`
+- `nzbDirectedTransferOrderForms`
+- `nzbDirectedTransferOrderFormItems`
 - `nzbSiteOptions`
 - `IV40700`
 - `IV00103`
 - `nzbCalculateDirectedTransferWI`
+- `nzbCalculateDirectedTransferItemWI`
 - `nzbDirectedTransferHdr`
 - `nzbDirectedTransferLne`
 - `nzbDirectedTransferEmailLne`
@@ -221,6 +224,12 @@ Publish:
 
 ```powershell
 .\Scripts\Publish Web Application.ps1
+```
+
+The version defaults to the current local time in `yy.MM.dd.HHmm` format. A specific version can be supplied when reproducing a deployment:
+
+```powershell
+.\Scripts\Publish Web Application.ps1 -Version "26.07.20.1430"
 ```
 
 The publish script clears `.\publish` before publishing to avoid nested publish output. If a dev IIS deployment has had several partial file copies and starts showing runtime/dependency errors, perform a full clean deploy from `.\publish`.

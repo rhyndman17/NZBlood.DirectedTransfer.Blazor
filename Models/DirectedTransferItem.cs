@@ -2,6 +2,7 @@ namespace NZBlood.DirectedTransfer.Blazor.Models;
 
 public sealed class DirectedTransferItem
 {
+    public string Zone { get; init; } = string.Empty;
     public int Priority { get; init; }
     public string ItemNumber { get; init; } = string.Empty;
     public string ItemDescription { get; init; } = string.Empty;

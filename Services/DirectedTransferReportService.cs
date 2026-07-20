@@ -109,9 +109,10 @@ public sealed class DirectedTransferReportService : IDirectedTransferReportServi
         html.AppendLine("<h1>" + Html(title) + "</h1>");
         html.AppendLine("<div class=\"meta\">");
         AddMeta(html, "Transfer", request.TransferOrderCode ?? "Preview");
+        AddMeta(html, "Order form", request.OrderFormReference);
         AddMeta(html, "Pick site", request.Site.PickFromSite + " " + request.Site.PickFromSiteName);
-        AddMeta(html, "POU site", request.Site.LocationCode + " " + request.Site.LocationName);
-        AddMeta(html, "Reference", request.OrderReference);
+        AddMeta(html, "Point of Use site", request.Site.LocationCode + " " + request.Site.LocationName);
+        AddMeta(html, "Order reference", request.OrderReference);
         AddMeta(html, "User", request.User.UserId);
         AddMeta(html, "Date", DateTime.Now.ToString("dd MMM yyyy HH:mm"));
         html.AppendLine("</div></div><div class=\"brand\">NZ Blood<br>Directed Transfer</div></section>");
@@ -119,18 +120,19 @@ public sealed class DirectedTransferReportService : IDirectedTransferReportServi
         html.AppendLine("""
             <table>
             <colgroup>
+                <col style="width: 5%">
                 <col style="width: 6%">
-                <col style="width: 13%">
-                <col style="width: 11%">
-                <col style="width: 31%">
+                <col style="width: 12%">
+                <col style="width: 10%">
+                <col style="width: 27%">
                 <col style="width: 6%">
-                <col style="width: 18%">
+                <col style="width: 19%">
                 <col style="width: 7%">
                 <col style="width: 8%">
             </colgroup>
             <thead><tr>
             """);
-        foreach (var heading in new[] { "Priority", "GP Item Code", "Vendor Item", "Description", "UOM", "UOM Description", "Order Up To", "Qty To Order" })
+        foreach (var heading in new[] { "Zone", "Priority", "GP Item Code", "Vendor Item", "Description", "UOM", "UOM Description", "Order Up To", "Qty To Order" })
         {
             html.AppendLine("<th>" + heading + "</th>");
         }
@@ -139,6 +141,7 @@ public sealed class DirectedTransferReportService : IDirectedTransferReportServi
         foreach (var item in rows)
         {
             html.AppendLine("<tr>");
+            html.AppendLine("<td class=\"center\">" + Html(item.Zone) + "</td>");
             html.AppendLine("<td class=\"center\">" + item.Priority.ToString("N0") + "</td>");
             html.AppendLine("<td class=\"code\">" + Html(item.ItemNumber) + "</td>");
             html.AppendLine("<td class=\"code\">" + Html(item.VendorItemNumber) + "</td>");

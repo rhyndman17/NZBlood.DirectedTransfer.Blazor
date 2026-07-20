@@ -5,20 +5,19 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-ALTER proc [dbo].[nzbCalculateDirectedTransferWI] @pickFromSiteId varchar(20),@pouSiteId varchar(15) as
+CREATE OR ALTER proc [dbo].[nzbCalculateDirectedTransferWI] @orderFormId varchar(50),@pickFromSiteId varchar(20),@pouSiteId varchar(15) as
 
 with resourcePlanning as (
-	select q.ITEMNMBR,i.ITEMDESC,q.LOCNCODE 'POUSiteID',PLANNERID,QTYONHND,ATYALLOC,ORDRPNTQTY,ORDRUPTOLVL,u.BASEUOFM,i.UOMSCHDL,ud.QTYBSUOM,isnull(rtrim(ito.[UOM Description]),'') UOFMLONGDESC,
-			case when d.DirectedTransferPriority is null or d.DirectedTransferPriority=11 then 0 else cast(d.DirectedTransferPriority as int) end as 'DirectedTransferPriority',
-			case when d.DirectedTransferPriority is null or d.DirectedTransferPriority=11 then 2147483647 else cast(d.DirectedTransferPriority as int) end as 'DirectedTransferPrioritySort'
+	select q.ITEMNMBR,i.ITEMDESC,q.LOCNCODE 'POUSiteID',rtrim(isnull(d.ZONE,'')) ZONE,PLANNERID,QTYONHND,ATYALLOC,ORDRPNTQTY,ORDRUPTOLVL,u.BASEUOFM,i.UOMSCHDL,ud.QTYBSUOM,isnull(rtrim(ito.[UOM Description]),'') UOFMLONGDESC,
+			case when d.PRIORITY is null then 0 else cast(d.PRIORITY as int) end as 'DirectedTransferPriority',
+			case when d.PRIORITY is null then 2147483647 else cast(d.PRIORITY as int) end as 'DirectedTransferPrioritySort'
 		from IV00101 i
-		join nzbDirectedTransferItems d on d.ITEMNMBR=i.ITEMNMBR
-		join IV00102 q on q.ITEMNMBR=i.ITEMNMBR and q.LOCNCODE=d.LOCNCODE
+		join nzbDirectedTransferOrderFormItems d on rtrim(d.ITEMNMBR)=rtrim(i.ITEMNMBR) and rtrim(d.ORDER_ID)=rtrim(@orderFormId)
+		join IV00102 q on q.ITEMNMBR=i.ITEMNMBR and rtrim(q.LOCNCODE)=rtrim(@pouSiteId)
 		join IV40201 u on u.UOMSCHDL=i.UOMSCHDL
 		join IV40202 ud on u.UOMSCHDL=ud.UOMSCHDL and u.BASEUOFM=ud.UOFM
 		left join nzbItemOptions ito on i.ITEMNMBR=ito.[Item Number]
-		where q.LOCNCODE=@pouSiteId
-		and d.DirectedTransferItem=1 ),
+		where rtrim(q.LOCNCODE)=rtrim(@pouSiteId) ),
 pickFromSiteQty as (
 		select ITEMNMBR,LOCNCODE, isnull(QTYONHND-ATYALLOC,0) 'QtyAvailable' from IV00102 where LOCNCODE=@pickFromSiteId and RCRDTYPE=2),
 panaPickingPICKQty as (
@@ -41,9 +40,9 @@ panaPickingPOUQty as (
 
 select r.ITEMNMBR,r.ITEMDESC,r.POUSiteID,isnull(p.QtyAvailable,0)-isnull(pickt.PanaPickingPICKQty,0) 'QtyAvailable',@pickFromSiteId 'PickFromSite',
 			r.BASEUOFM,isnull(pickt.PanaPickingPICKQty,0) PanaPickingPICKQty,isnull(pout.PanaPickingPOUQty,0) PanaPickingPOUQty, r.ORDRUPTOLVL,r.UOMSCHDL,r.QTYBSUOM,r.UOFMLONGDESC,
-			r.DirectedTransferPriority
+			r.ZONE,r.DirectedTransferPriority
 from resourcePlanning r
 left join pickFromSiteQty p on r.ITEMNMBR=p.ITEMNMBR
 left join panaPickingPICKQty pickt on r.ITEMNMBR=pickt.ItemCode and pickt.SourceLocCode=@pickFromSiteId
 left join panaPickingPOUQty pout on r.ITEMNMBR=pout.ItemCode and pout.DestinationLocCode=@pouSiteId
-order by r.DirectedTransferPrioritySort,r.ITEMNMBR
+order by r.ZONE,r.DirectedTransferPrioritySort,r.ITEMNMBR

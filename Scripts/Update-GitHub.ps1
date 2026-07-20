@@ -6,7 +6,7 @@ param(
 
     [string] $Branch = "main",
 
-    [string] $Message = "_26.7.16.1104",
+    [string] $Message = "_26.07.20.1242",
 
     [switch] $SkipBuild
 )

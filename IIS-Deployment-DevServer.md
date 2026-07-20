@@ -38,7 +38,8 @@ Sql Objects
 
 The configured SQL login needs read access to:
 
-- `nzbDirectedTransferItems`
+- `nzbDirectedTransferOrderForms`
+- `nzbDirectedTransferOrderFormItems`
 - `nzbSiteOptions`
 - `IV40700`
 - `IV00103`
@@ -47,6 +48,8 @@ It also needs execute access to:
 
 - `nzbCalculateDirectedTransferWI`
 - `nzbCreateDirectedTransfer`
+
+Deploy the order-form views before the calculation procedures. After deployment, `dbo.nzbCalculateDirectedTransferWI` must expose `@orderFormId`, `@pickFromSiteId`, and `@pouSiteId`; an older two-parameter copy causes SQL error 8144 (`too many arguments specified`).
 
 It needs insert/read permissions for:
 
@@ -74,9 +77,12 @@ Or use the helper script:
 
 The helper script clears `.\publish` before publishing to avoid nested `publish\publish` folders. Use a full folder copy if IIS starts showing runtime/dependency errors after several partial deploys.
 
+Each publish defaults to a local-time version in `yy.MM.dd.HHmm` format. It updates the application header and writes the same value to `publish\version.txt`. Use `-Version "26.07.20.1430"` to reproduce a specific version.
+
 The publish folder should include:
 
 - `NZBlood.DirectedTransfer.Blazor.dll`
+- `version.txt`
 - `web.config`
 - `appsettings.json`
 - `wwwroot`
@@ -198,9 +204,9 @@ Start with read-only behaviour:
 1. Open the IIS URL.
 2. Confirm the header and logo render.
 3. Confirm the current Windows user is shown correctly.
-4. Select a POU site.
-5. Confirm Pick From site is populated.
-6. Confirm item rows load.
+4. Select an active order form and confirm the option reads `OrderFormID : Description`.
+5. Confirm its Point of Use and Pick From sites are populated.
+6. Confirm only that order form's item rows load in Zone, then Priority order.
 7. Confirm `QTY Pending`, `QTY Available`, and `Order Up To` match the Wisej app for the same site.
 8. Confirm Print is enabled after items load, even when no quantities are entered.
 9. Confirm Process remains disabled until at least one line has a `QTY to Order`.
@@ -208,7 +214,8 @@ Start with read-only behaviour:
 11. Click Print.
 12. Confirm the banner says `Building report...` and the PDF downloads automatically.
 13. Confirm the print PDF is portrait, includes all item rows, excludes `Qty Pending` and `Qty Available`, and shows a bottom-aligned underline instead of entered `Qty To Order` values.
-14. Confirm the PDF has no Syncfusion trial watermark.
+14. Confirm the PDF shows the selected order form as `OrderFormID : Description`, separately from Order Reference.
+15. Confirm the PDF has no Syncfusion trial watermark.
 
 Then test processing with a controlled test case:
 
@@ -287,7 +294,7 @@ Email errors:
 - Confirm `Smtp:Host`.
 - Confirm relay permissions for the IIS server.
 - Confirm port and SSL requirements.
-- Confirm `SiteTransferEmailAddress` is populated for the selected POU site.
+- Confirm `SiteTransferEmailAddress` is populated in `nzbSiteOptions` for the order form's POU site.
 
 Browser login prompt before app opens:
 
@@ -300,8 +307,8 @@ Browser login prompt before app opens:
 - [ ] App opens in IIS.
 - [ ] Windows/current user resolves as expected.
 - [ ] Live SQL mode is enabled.
-- [ ] POU site list loads.
-- [ ] Item grid matches Wisej for at least one site.
+- [ ] Active order-form list loads; inactive forms are absent.
+- [ ] Item grid matches the configured items for at least one order form.
 - [ ] Quantity validation works.
 - [ ] Print is enabled once item rows load, even with no item quantities entered.
 - [ ] Process is disabled until at least one item quantity is entered.

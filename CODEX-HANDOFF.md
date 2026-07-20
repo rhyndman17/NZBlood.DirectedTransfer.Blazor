@@ -57,10 +57,12 @@ C:\Users\RobertHyndman\OneDrive - Altara Limited\Dev\General\NZBlood.ApprovalWor
 - Current visible build marker is in `BuildInfo.cs`.
 - Item list supports filtering, ordered-only view, paging, configurable default page size, row-level validation banners, and direct quantity entry.
 - Quantity values are preserved across paging/filtering.
-- The POU dropdown receives initial focus.
-- Refresh re-resolves the selected POU site and reloads the item list. There is no separate Load button.
+- The order-form dropdown receives initial focus and shows `OrderFormID : Description`.
+- Only active order forms are selectable. The selected form supplies POU/Pick From sites and scopes the item list.
+- Refresh reloads the selected order form's item list. There is no separate Load button.
 - `DirectedTransfer:MainMessage` is a permanent notice inside the selection panel, separate from transient status banners.
 - Print and Process auto-download generated PDFs through `/reports/directed-transfer/{reportId}`.
+- The process confirmation and generated reports show the selected order form as `OrderFormID : Description`.
 - Print is enabled when item rows are loaded; Process is still quantity-gated.
 - Process confirmation uses site names and email address.
 - `wwwroot/favicon.png` is NZ Blood branded.
@@ -88,7 +90,7 @@ The project has helper scripts matching the Approval Workflows app:
 .\Scripts\Update-GitHub.ps1 -Message "_2026.5.12"
 ```
 
-`Publish Web Application.ps1` clears `.\publish` before publishing so old publish output does not get copied into itself. It currently enables stdout logging in generated `web.config`; turn this off once IIS diagnostics are no longer needed.
+`Publish Web Application.ps1` generates a `yy.MM.dd.HHmm` version, updates `BuildInfo.cs` before compilation, writes `publish\version.txt`, and clears `.\publish` before publishing so old output does not get copied into itself. It currently enables stdout logging in generated `web.config`; turn this off once IIS diagnostics are no longer needed.
 
 `Update-GitHub.ps1` defaults to:
 
@@ -152,7 +154,8 @@ Important objects:
 - `nzbDirectedTransferLne`
 - `nzbDirectedTransferEmailLne`
 - `nzbDirectedTransferReport`
-- `nzbDirectedTransferItems`
+- `nzbDirectedTransferOrderForms`
+- `nzbDirectedTransferOrderFormItems`
 - `nzbSiteOptions`
 
 ## Important Caution

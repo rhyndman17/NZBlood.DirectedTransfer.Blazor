@@ -154,13 +154,26 @@ a:hover {
 }
 
 .transfer-command-bar {
-    grid-template-columns: minmax(190px, 0.35fr) minmax(180px, 0.28fr) minmax(260px, 0.5fr) auto;
+    grid-template-columns: 1fr;
+}
+
+.command-fields {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: minmax(320px, 1fr) 100px 100px minmax(200px, 0.45fr) max-content;
+    align-items: end;
 }
 
 .search-box {
     display: flex;
     flex-direction: column;
     gap: 6px;
+}
+
+.site-code-box,
+.site-code-box input {
+    min-width: 0;
+    width: 100px;
 }
 
 .search-box span,
@@ -226,6 +239,8 @@ input[readonly] {
 
 .command-actions {
     align-self: end;
+    flex-wrap: nowrap;
+    white-space: nowrap;
 }
 
 .site-summary {
@@ -595,6 +610,7 @@ input[readonly] {
 
     .page-header,
     .command-bar,
+    .command-fields,
     .item-tools,
     .site-summary {
         align-items: stretch;
@@ -603,6 +619,10 @@ input[readonly] {
 
     .page-header {
         flex-direction: column;
+    }
+
+    .command-fields {
+        grid-template-columns: 1fr !important;
     }
 
     .user-pill,
