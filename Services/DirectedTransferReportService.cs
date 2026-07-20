@@ -41,7 +41,7 @@ public sealed class DirectedTransferReportService : IDirectedTransferReportServi
             var converter = new HtmlToPdfConverter(HtmlRenderingEngine.Blink);
             var settings = new BlinkConverterSettings
             {
-                Margin = new PdfMargins { All = 24 },
+                Margin = new PdfMargins { Left = 24, Right = 24, Top = 44, Bottom = 38 },
                 Orientation = orientation,
                 PdfPageSize = PdfPageSize.A4,
                 ViewPortSize = new Syncfusion.Drawing.Size(orientation == PdfPageOrientation.Portrait ? 1000 : 1100, 0)
@@ -50,6 +50,7 @@ public sealed class DirectedTransferReportService : IDirectedTransferReportServi
             converter.ConverterSettings = settings;
 
             using var document = converter.Convert(html, string.Empty);
+            AddPageFurniture(document);
             using var stream = new MemoryStream();
             document.Save(stream);
             return stream.ToArray();
@@ -65,6 +66,51 @@ public sealed class DirectedTransferReportService : IDirectedTransferReportServi
             using var stream = new MemoryStream();
             document.Save(stream);
             return stream.ToArray();
+        }
+    }
+
+    private static void AddPageFurniture(PdfDocument document)
+    {
+        string[] headings = ["Zone", "Priority", "GP Item Code", "Vendor Item", "Description", "UOM", "UOM Description", "Order Up To", "Qty To Order"];
+        float[] widths = [0.05f, 0.06f, 0.12f, 0.10f, 0.27f, 0.06f, 0.19f, 0.07f, 0.08f];
+        var headerFont = new PdfStandardFont(PdfFontFamily.Helvetica, 8, PdfFontStyle.Bold);
+        var pageFont = new PdfStandardFont(PdfFontFamily.Helvetica, 9);
+        var totalPages = document.Pages.Count;
+
+        for (var pageIndex = 0; pageIndex < totalPages; pageIndex++)
+        {
+            var page = document.Pages[pageIndex];
+            var graphics = page.Graphics;
+            var clientSize = graphics.ClientSize;
+
+            if (pageIndex > 0)
+            {
+                var contentLeft = 24f;
+                var contentWidth = clientSize.Width - 48f;
+                var columnLeft = contentLeft;
+
+                for (var columnIndex = 0; columnIndex < headings.Length; columnIndex++)
+                {
+                    var columnWidth = contentWidth * widths[columnIndex];
+                    graphics.DrawString(
+                        headings[columnIndex].ToUpperInvariant(),
+                        headerFont,
+                        PdfBrushes.Black,
+                        new Syncfusion.Drawing.RectangleF(columnLeft, 12, columnWidth, 24));
+                    columnLeft += columnWidth;
+                }
+
+                graphics.DrawLine(PdfPens.Gray, contentLeft, 36, clientSize.Width - 24, 36);
+            }
+
+            var pageText = $"Page {pageIndex + 1} of {totalPages}";
+            var textSize = pageFont.MeasureString(pageText);
+            graphics.DrawString(
+                pageText,
+                pageFont,
+                PdfBrushes.Black,
+                clientSize.Width - 24 - textSize.Width,
+                clientSize.Height - 24);
         }
     }
 
@@ -89,7 +135,10 @@ public sealed class DirectedTransferReportService : IDirectedTransferReportServi
             .meta span:nth-child(odd) { color: #605e5c; font-weight: 700; text-transform: uppercase; }
             .brand { color: #a4262c; font-size: 18px; font-weight: 800; text-align: right; }
             table { border-collapse: collapse; margin-top: 16px; table-layout: fixed; width: 100%; }
-            th { background: #faf9f8; border-bottom: 1px solid #c8c6c4; color: #323130; font-size: 12px; padding: 6px 4px; text-align: left; text-transform: uppercase; }
+            thead { display: table-header-group; }
+            tbody { display: table-row-group; }
+            tr { break-inside: avoid; page-break-inside: avoid; }
+            th { background: #ffffff; border-bottom: 1px solid #c8c6c4; color: #323130; font-family: Arial, sans-serif; font-size: 8pt; padding: 6px 4px; text-align: left; text-transform: uppercase; }
             td { border-bottom: 1px solid #edebe9; font-size: 14px; padding: 6px 4px; vertical-align: top; }
             .code { overflow-wrap: anywhere; }
             .text { overflow-wrap: anywhere; word-break: normal; }

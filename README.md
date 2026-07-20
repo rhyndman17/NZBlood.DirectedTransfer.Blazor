@@ -62,6 +62,7 @@ http://localhost:5222
 - Report generation from HTML to PDF.
 - Print generates and downloads a portrait pick-list PDF directly. It includes all item rows, leaves `Qty To Order` as a write-in underline, and does not require entered quantities.
 - Print and processed reports identify the selected order form as `OrderFormID : Description`, separately from the user-entered order reference.
+- Multi-page PDFs repeat the item-column header on every page and show `Page X of Y` in the footer.
 - Process creates the transfer, generates and downloads the processed PDF, and optionally emails it depending on `Smtp:SendEmail`. The process report includes only ordered rows and shows the entered `Qty To Order` values.
 - Email service uses the selected site's `SiteTransferEmailAddress` when enabled.
 - Configurable IIS path base and default page size.

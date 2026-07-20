@@ -215,7 +215,8 @@ Start with read-only behaviour:
 12. Confirm the banner says `Building report...` and the PDF downloads automatically.
 13. Confirm the print PDF is portrait, includes all item rows, excludes `Qty Pending` and `Qty Available`, and shows a bottom-aligned underline instead of entered `Qty To Order` values.
 14. Confirm the PDF shows the selected order form as `OrderFormID : Description`, separately from Order Reference.
-15. Confirm the PDF has no Syncfusion trial watermark.
+15. For a multi-page report, confirm the item-column header repeats and every page shows `Page X of Y`.
+16. Confirm the PDF has no Syncfusion trial watermark.
 
 Then test processing with a controlled test case:
 
