@@ -167,7 +167,7 @@
                 <tbody>
                     @foreach (var item in PagedItems)
                     {
-                        <tr @key="item.ItemNumber" class="@(!string.IsNullOrWhiteSpace(item.ValidationMessage) ? "line-has-error" : null)">
+                        <tr @key="item.RenderKey" class="@(!string.IsNullOrWhiteSpace(item.ValidationMessage) ? "line-has-error" : null)">
                             <td class="center">@item.Zone</td>
                             <td class="center">@item.Priority.ToString("N0")</td>
                             <td>@item.ItemNumber</td>
@@ -183,7 +183,7 @@
                         </tr>
                         @if (!string.IsNullOrWhiteSpace(item.ValidationMessage))
                         {
-                            <tr @key="@("error-" + item.ItemNumber)" class="line-error-row">
+                            <tr @key="@("error-" + item.RenderKey)" class="line-error-row">
                                 <td colspan="10">
                                     <div class="line-error-banner">@item.ValidationMessage</div>
                                 </td>
