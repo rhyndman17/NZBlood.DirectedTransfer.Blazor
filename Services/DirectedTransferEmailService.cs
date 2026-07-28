@@ -23,7 +23,7 @@ public sealed class DirectedTransferEmailService : IDirectedTransferEmailService
         var recipients = SplitRecipients(request.Site.SiteTransferEmailAddress);
         if (recipients.Count == 0)
         {
-            return "No site transfer email address is configured for this POU site.";
+            return "No site transfer email address is configured for this Pick From site.";
         }
 
         var host = _configuration["Smtp:Host"];

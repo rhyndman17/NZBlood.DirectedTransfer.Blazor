@@ -40,7 +40,7 @@ C:\Users\RobertHyndman\OneDrive - Altara Limited\Dev\General\NZBlood.ApprovalWor
 - Process should generate and download the processed PDF directly.
 - Process should be disabled until at least one line has a quantity to order.
 - SMTP should only happen on Process, and only when `Smtp:SendEmail=1`.
-- Email recipients are the selected site's `SiteTransferEmailAddress`.
+- Email recipients come from the selected order form's Pick From site `SiteTransferEmailAddress`.
 - PDF generation can use Syncfusion.
 - Dev server processing is tested with `Smtp:SendEmail=0`.
 

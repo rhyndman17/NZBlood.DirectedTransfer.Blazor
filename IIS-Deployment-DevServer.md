@@ -295,7 +295,7 @@ Email errors:
 - Confirm `Smtp:Host`.
 - Confirm relay permissions for the IIS server.
 - Confirm port and SSL requirements.
-- Confirm `SiteTransferEmailAddress` is populated in `nzbSiteOptions` for the order form's POU site.
+- Confirm `SiteTransferEmailAddress` is populated in `nzbSiteOptions` for the order form's Pick From site.
 
 Browser login prompt before app opens:
 

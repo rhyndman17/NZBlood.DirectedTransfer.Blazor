@@ -26,7 +26,7 @@ public sealed class DirectedTransferService : IDirectedTransferService
                    rtrim(isnull(s.SiteTransferEmailAddress, '')) SiteTransferEmailAddress
             from nzbDirectedTransferOrderForms f
             left join IV40700 pou on rtrim(pou.LOCNCODE)=rtrim(f.PointOfUseSite)
-            left join nzbSiteOptions s on rtrim(s.LocationCode)=rtrim(f.PointOfUseSite)
+            left join nzbSiteOptions s on rtrim(s.LocationCode)=rtrim(f.PickFromSite)
             left join IV40700 pick on rtrim(pick.LOCNCODE)=rtrim(f.PickFromSite)
             where isnull(f.Inactive, 0)=0
             order by rtrim(f.OrderFormID)
